@@ -1,0 +1,9 @@
+---
+- project:
+    templates:
+      - build-tox-docs
+    check: &logcheck
+      jobs:
+        - openstack-tox-pep8
+        - openstack-tox-py38
+    gate: *logcheck

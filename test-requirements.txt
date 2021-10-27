@@ -1,0 +1,5 @@
+hacking<4.1.1    # Apache-2.0
+flake8<3.8.5
+pep8<1.7.2
+testtools<2.5.1  # MIT
+stestr<3.3       # Apache-2.0

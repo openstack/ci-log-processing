@@ -1,0 +1,11 @@
+.DS_Store
+*.swp
+*~
+*.pyc
+doc/build/
+.tox/
+logscraper.egg-info/
+.eggs
+AUTHORS
+ChangeLog
+.stestr/
