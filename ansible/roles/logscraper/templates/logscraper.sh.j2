@@ -1,0 +1,13 @@
+#!/bin/bash
+
+/usr/bin/podman run \
+    --network host \
+    --rm \
+    --name logscraper-{{ item.tenant }} \
+    --volume {{ logscraper_dir }}:{{ logscraper_dir }}:z \
+    {{ container_images['logscraper'] }} \
+    --gearman-port {{ item.gearman_port }} \
+    --gearman-server {{ item.gearman_server }} \
+    --checkpoint-file {{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }} \
+    --follow \
+    --zuul-api-url {{ item.zuul_api_url }}

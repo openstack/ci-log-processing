@@ -1,4 +1,4 @@
-Openstack CI log processing
+OpenStack CI log processing
 ===========================
 
 The goal of this repository is to provide and check
@@ -16,7 +16,7 @@ the log processing system.
 Testing
 -------
 
-The part of Openstack CI log processing runs a complete testing and
+The part of OpenStack CI log processing runs a complete testing and
 continuous-integration environment, powered by `Zuul
 <https://zuul-ci.org/>`__.
 

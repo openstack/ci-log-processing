@@ -1,0 +1,33 @@
+---
+- name: Create dedicated group
+  group:
+    name: "{{ logscraper_group }}"
+    state: present
+
+- name: Create dedicated user
+  user:
+    name: "{{ logscraper_user }}"
+    state: present
+    comment: "Dedicated user for logscraper"
+    group: "{{ logscraper_group }}"
+    shell: "/sbin/nologin"
+    create_home: false
+
+- name: Create dedicated directory
+  file:
+    path: "{{ logscraper_dir }}"
+    state: directory
+    owner: "{{ logscraper_user }}"
+    group: "{{ logscraper_group }}"
+
+- name: Ensure container software is installed
+  package:
+    name: podman
+    state: present
+
+- name: Pull image
+  shell: "podman pull {{ container_images['logscraper'] }}"
+
+- name: Configure logscraper service
+  include_tasks: service.yml
+  loop: "{{ tenant_builds }}"

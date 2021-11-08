@@ -1,0 +1,29 @@
+---
+- name: Generate logscraper script
+  template:
+    src: logscraper.sh.j2
+    dest: "/usr/local/bin/logscraper-{{ item.tenant }}"
+    mode: '0755'
+  register: _start_script
+
+- name: Generate systemd unit
+  template:
+    src: logscraper.service.j2
+    dest: "/etc/systemd/system/logscraper-{{ item.tenant }}.service"
+    owner: root
+    group: root
+
+- name: Enable and restart service
+  service:
+    name: logscraper-{{ item.tenant }}
+    state: restarted
+    daemon-reload: true
+    enabled: true
+  when: _start_script.changed
+
+- name: Ensure that service is running
+  service:
+    name: logscraper-{{ item.tenant }}
+    state: started
+    daemon-reload: true
+    enabled: true

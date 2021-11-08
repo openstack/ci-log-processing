@@ -1,0 +1,16 @@
+[Unit]
+Description=logscraper service for {{ item.tenant }}
+After=syslog.target network.target
+StartLimitInterval=20
+StartLimitBurst=5
+
+[Service]
+Type=simple
+SyslogIdentifier=logscraper-{{ item.tenant }}
+Restart=always
+RestartSec=3s
+ExecStop=-/usr/bin/podman stop -t 10 logscraper-{{ item.tenant }}
+ExecStart=/usr/local/bin/logscraper-{{ item.tenant }}
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+---
+- name: Configure Logscraper tool
+  hosts: logscraper01.openstack.org
+  become: true
+  roles:
+    - logscraper

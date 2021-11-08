@@ -4,6 +4,7 @@
       - build-tox-docs
     check: &logcheck
       jobs:
+        - openstack-tox-linters
         - openstack-tox-pep8
         - openstack-tox-py38
     gate: *logcheck
