@@ -1,0 +1,6 @@
+---
+- name: Configure log-gearman-client and log-gearman-worker tools
+  hosts: logscraper01.openstack.org
+  become: true
+  roles:
+    - loggearman

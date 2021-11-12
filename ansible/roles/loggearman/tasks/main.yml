@@ -1,0 +1,59 @@
+---
+- name: Create decidated group
+  group:
+    name: "{{ loggearman_group }}"
+    state: present
+
+- name: Create dedicated user
+  user:
+    name: "{{ loggearman_user }}"
+    state: present
+    comment: "Dedicated user for loggearman"
+    group: "{{ loggearman_group }}"
+    shell: "/sbin/nologin"
+    create_home: false
+
+- name: Create dedicated directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ loggearman_user }}"
+    group: "{{ loggearman_group }}"
+  loop:
+    - "{{ loggearman_dir }}"
+    - "{{ loggearman_log_dir }}"
+
+- name: Init log files
+  file:
+    path: "{{ loggearman_log_dir }}/{{ item }}.log"
+    state: touch
+    owner: "{{ loggearman_user }}"
+    group: "{{ loggearman_group }}"
+    mode: "0666"
+  loop:
+    - client
+    - worker
+
+- name: Ensure container software is installed
+  package:
+    name: podman
+    state: present
+
+- name: Pull image
+  shell: "podman pull {{ container_images['loggearman'] }}"
+
+- name: Create configuration files
+  template:
+    src: "{{ item }}.yml.j2"
+    dest: "{{ loggearman_dir }}/{{ item }}.yml"
+  loop:
+    - client
+    - worker
+  notify:
+    - restart loggearman {{ item }}
+
+- name: Configure loggearman service
+  include_tasks: service.yml
+  loop:
+    - client
+    - worker
