@@ -24,4 +24,4 @@ output_mode: tcp
 crm114_script: ""
 crm114_data: ""
 log_ca_certs: ""
-log_cert_verify: True
+log_cert_verify: true

@@ -1,0 +1,33 @@
+input {
+  tcp {
+    host => "0.0.0.0"
+    port => "{{ output_port }}"
+    codec => json_lines {}
+    type => "zuul"
+  }
+}
+
+filter {
+  grok {
+    match => ["message", "(?<timestamp>[-0-9]{10}\s+[0-9.:]{12})(?<ms>[0-9]{3}) (?<sep>\|)%{GREEDYDATA:message}"]
+    overwrite => [ "message" ]
+  }
+  if [message] =~ /^\s*$/ {
+      drop { }
+  }
+  date {
+    match => ["timestamp", "yyyy-MM-dd HH:mm:ss.SSS"]
+    timezone => "UTC"
+  }
+}
+output {
+  elasticsearch {
+    hosts => ['https://0.0.0.0:9200']
+    index => "logstash-logscraper-%{+YYYY.MM.dd}"
+    user => 'admin'
+    password => "admin"
+    ssl => true
+    ssl_certificate_verification => false
+    ilm_enabled => false
+  }
+}

@@ -1,0 +1,24 @@
+---
+- hosts: all
+  become: true
+  vars:
+    # logscraper
+    tenant_builds:
+      - tenant: openstack
+        gearman_port: 4730
+        gearman_server: 0.0.0.0
+        zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+        zuul_api_urls:
+          - https://zuul.opendev.org/api/tenant/openstack
+        insecure: false
+        job_names: []
+    # loggearman - client
+    source_url: https://0.0.0.0
+    # loggearman - worker
+    output_host: 0.0.0.0
+    output_port: 9999
+    gearman_host: 0.0.0.0
+    gearman_port: 4730
+    log_cert_verify: false
+  roles:
+    - check-services

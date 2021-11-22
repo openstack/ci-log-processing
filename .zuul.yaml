@@ -1,4 +1,13 @@
 ---
+- job:
+    name: ci-log-processing-functional-test-fedora-34
+    description: Test is validating ci log processing services
+    run: ansible/playbooks/check-services.yml
+    nodeset:
+      nodes:
+        - name: fedora-34
+          label: fedora-34
+
 - project:
     templates:
       - publish-tox-docs-infra
@@ -8,4 +17,5 @@
         - openstack-tox-linters
         - openstack-tox-pep8
         - openstack-tox-py38
+        - ci-log-processing-functional-test-fedora-34
     gate: *logcheck
