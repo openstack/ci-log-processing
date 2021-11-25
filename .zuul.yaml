@@ -1,7 +1,8 @@
 ---
 - project:
     templates:
-      - build-tox-docs
+      - publish-tox-docs-infra
+      - publish-to-pypi-quietly
     check: &logcheck
       jobs:
         - openstack-tox-linters
