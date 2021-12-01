@@ -1,0 +1,14 @@
+---
+- name: restart loggearman client
+  service:
+    name: loggearman-client
+    state: restarted
+    daemon-reload: true
+    enabled: true
+
+- name: restart loggearman worker
+  service:
+    name: loggearman-worker
+    state: restarted
+    daemon-reload: true
+    enabled: true

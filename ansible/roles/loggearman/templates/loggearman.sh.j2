@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# MANAGED BY ANSIBLE
+/usr/bin/podman run \
+    --network host \
+    --rm \
+    --name loggearman-{{ item }} \
+    --volume {{ loggearman_dir }}:{{ loggearman_dir }}:Z \
+    --volume {{ loggearman_log_dir }}:{{ loggearman_log_dir }}:z \
+    {{ container_images['loggearman'] }} \
+    log-gearman-{{ item }} \
+    -c {{ loggearman_dir }}/{{ item }}.yml \
+    --foreground \
+    -d {{ loggearman_log_dir }}/{{ item }}.log
