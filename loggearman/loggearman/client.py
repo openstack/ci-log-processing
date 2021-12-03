@@ -167,7 +167,9 @@ class Server(object):
     def setup_processors(self):
         for publisher in self.config['zmq-publishers']:
             gearclient = gear.Client()
-            gearclient.addServer('localhost')
+            host = self.config.get('gearman-host', 'localhost')
+            port = self.config.get('gearman-port', 4730)
+            gearclient.addServer(host, port=port)
             gearclient.waitForServer()
             log_processor = EventProcessor(
                 publisher, gearclient,
@@ -198,6 +200,7 @@ class Server(object):
         if statsd_host:
             self.wait_for_name_resolution(statsd_host, statsd_port)
         self.gearserver = gear.Server(
+            port=self.config.get('gearman-port', 4730),
             statsd_host=statsd_host,
             statsd_port=statsd_port,
             statsd_prefix=statsd_prefix)

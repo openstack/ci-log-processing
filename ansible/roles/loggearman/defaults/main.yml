@@ -10,6 +10,8 @@ container_images:
   loggearman: quay.rdoproject.org/software-factory/loggearman:latest
 
 # Gearman client
+gearman_client_host: 0.0.0.0
+gearman_client_port: 4730
 source_url: ""
 zmq_publishers: []
 subunit_files: []
@@ -17,7 +19,7 @@ source_files: []
 
 # Gearman worker
 gearman_host: 0.0.0.0
-gearman_port: 4731
+gearman_port: 4730
 output_host: logstash.example.com
 output_port: 9999
 output_mode: tcp
