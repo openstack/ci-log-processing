@@ -154,6 +154,26 @@ class TestScraper(base.TestCase):
             self.assertRaises(ValueError, logscraper.check_connection,
                               args.logstash_url)
 
+    @mock.patch('logscraper.logscraper.get_builds',
+                return_value=iter([{'uuid': '1234'}]))
+    def test_get_last_job_results(self, mock_get_builds):
+        job_result = logscraper.get_last_job_results(
+            'http://somehost.com/api/tenant/tenant1', False, '1234',
+            'someuuid')
+        self.assertEqual([{'uuid': '1234'}], list(job_result))
+        self.assertEqual(1, mock_get_builds.call_count)
+
+    @mock.patch('logscraper.logscraper.get_builds',
+                return_value=iter([{'uuid': '1234'}]))
+    def test_get_last_job_results_wrong_max_skipped(self, mock_get_builds):
+        def make_fake_list(x):
+            return list(x)
+
+        job_result = logscraper.get_last_job_results(
+            'http://somehost.com/api/tenant/tenant1', False, 'somevalue',
+            'someuuid')
+        self.assertRaises(ValueError, make_fake_list, job_result)
+
     @mock.patch('multiprocessing.pool.Pool.map')
     @mock.patch('builtins.open', new_callable=mock.mock_open())
     @mock.patch('os.path.isfile')

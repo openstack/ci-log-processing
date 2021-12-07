@@ -348,7 +348,7 @@ def get_last_job_results(zuul_url, insecure, max_skipped, last_uuid):
     """Yield builds until we find the last uuid."""
     count = 0
     for build in get_builds(zuul_url, insecure):
-        if count > max_skipped:
+        if count > int(max_skipped):
             break
         if build["uuid"] == last_uuid:
             break
