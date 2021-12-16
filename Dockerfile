@@ -12,12 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM opendevorg/python-builder:3.8 as builder
+FROM docker.io/opendevorg/python-builder:3.8 as builder
 
 COPY . /tmp/src
 RUN assemble
 
-FROM opendevorg/python-base:3.8 as logscraper
+FROM docker.io/opendevorg/python-base:3.8 as logscraper
 
 COPY --from=builder /output/ /output
 RUN /output/install-from-bindep
