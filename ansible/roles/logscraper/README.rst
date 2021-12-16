@@ -1,5 +1,5 @@
-Logscraper
-==========
+Logscraper ansible role
+=======================
 
 The goal of this role is to setup and configure service related
 to logscraper script which is responsible to to push recent

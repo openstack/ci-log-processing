@@ -17,12 +17,16 @@ Contents:
 
    * :doc:`logscraper`
    * :doc:`ansible-role`
+   * :doc:`loggearman`
+   * :doc:`loggearman-role`
 
 .. toctree::
    :maxdepth: 2
 
    logscraper
    ansible-role
+   loggearman
+   loggearman-role
 
 Indices and tables
 ==================
