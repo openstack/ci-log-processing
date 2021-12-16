@@ -144,11 +144,11 @@ retry_request = tenacity.retry(
 
 
 @retry_request
-def requests_get(url, verify):
+def requests_get(url, verify=True):
     return requests.get(url, verify=verify)
 
 
-def requests_get_json(url, verify):
+def requests_get_json(url, verify=True):
     resp = requests_get(url, verify)
     resp.raise_for_status()
     return resp.json()
