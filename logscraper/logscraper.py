@@ -34,6 +34,8 @@ import urllib
 import yaml
 
 from distutils.version import StrictVersion as s_version
+import tenacity
+
 
 GEARMAN_SERVER = None
 GEARMAN_PORT = None
@@ -129,6 +131,27 @@ files:
       - screen
       - oslofmt
 """  # noqa
+
+
+retry_request = tenacity.retry(
+    # Raise the real exception instead of RetryError
+    reraise=True,
+    # Stop after 10 attempts
+    stop=tenacity.stop_after_attempt(10),
+    # Slowly wait more
+    wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+)
+
+
+@retry_request
+def requests_get(url, verify):
+    return requests.get(url, verify=verify)
+
+
+def requests_get_json(url, verify):
+    resp = requests_get(url, verify)
+    resp.raise_for_status()
+    return resp.json()
 
 
 ###############################################################################
@@ -311,9 +334,8 @@ def _zuul_complete_available(zuul_url, insecure):
     parameter.
     """
     url = zuul_url + "/status"
-    zuul_status = requests.get(url, verify=insecure)
-    zuul_status.raise_for_status()
-    zuul_version = parse_version(zuul_status.json().get("zuul_version"))
+    zuul_status = requests_get_json(url, verify=insecure)
+    zuul_version = parse_version(zuul_status.get("zuul_version"))
     if zuul_version and zuul_version >= s_version("4.7.0"):
         return "&complete=true"
 
@@ -331,10 +353,9 @@ def get_builds(zuul_url, insecure):
     while True:
         url = base_url + "&skip=" + str(pos)
         logging.info("Getting job results %s", url)
-        jobs_result = requests.get(url, verify=insecure)
-        jobs_result.raise_for_status()
+        jobs_result = requests_get_json(url, verify=insecure)
 
-        for job in jobs_result.json():
+        for job in jobs_result:
             # It is important here to check we didn't yield builds twice,
             # as this can happen when using skip if new build get reported
             # between the two requests.
@@ -365,7 +386,7 @@ def check_specified_files(job_result):
     for f in file_to_check:
         if not job_result["log_url"]:
             continue
-        response = requests.get("%s%s" % (job_result["log_url"], f))
+        response = requests_get("%s%s" % (job_result["log_url"], f))
         if response.status_code == 200:
             available_files.append(f)
     return available_files
