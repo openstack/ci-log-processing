@@ -107,7 +107,8 @@ class FakeArgs(object):
     def __init__(self, zuul_api_url=None, gearman_server=None,
                  gearman_port=None, follow=False, insecure=False,
                  checkpoint_file=None, ignore_checkpoint=None,
-                 logstash_url=None, workers=None, max_skipped=None):
+                 logstash_url=None, workers=None, max_skipped=None,
+                 job_name=None):
 
         self.zuul_api_url = zuul_api_url
         self.gearman_server = gearman_server
@@ -119,6 +120,7 @@ class FakeArgs(object):
         self.logstash_url = logstash_url
         self.workers = workers
         self.max_skipped = max_skipped
+        self.job_name = job_name
 
 
 class TestScraper(base.TestCase):
@@ -131,6 +133,46 @@ class TestScraper(base.TestCase):
         self.assertEqual('4.10.2', ver3)
         self.assertRaises(ValueError,
                           logscraper.parse_version, '123412test123')
+
+    @mock.patch('requests.get')
+    def test_filter_available_jobs(self, mock_requests):
+        # defined jobs: https://zuul.opendev.org/api/tenant/openstack/jobs
+        example_jobs = [{
+            "name": "openstack-tox-py38",
+            "description": "Some description",
+            "variants": [{
+                "parent": "zuul-tox"
+            }]
+        }, {
+            "name": "openstack-tox-py27",
+            "description": "Some other description",
+            "variants": [{
+                "parent": "zuul-tox"
+            }]
+        }]
+        mock_requests.raise_for_status = mock.Mock()
+        mock_requests.return_value.json.return_value = example_jobs
+        job_names = ['openstack-tox-py38']
+        result = logscraper.filter_available_jobs(
+            'http://somehost.com/api/tenant/tenant1', job_names, False)
+        self.assertEqual(['openstack-tox-py38'], result)
+
+    @mock.patch('logscraper.logscraper.filter_available_jobs',
+                side_effect=[['testjob1', 'testjob2'], [], []])
+    @mock.patch('logscraper.logscraper.run_scraping')
+    def test_run_with_jobs(self, mock_scraping, mock_jobs):
+        # when multiple job name provied, its iterate on zuul jobs
+        # if such job is available.
+        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
+            mock_args.return_value = FakeArgs(
+                zuul_api_url=['http://somehost.com/api/tenant/tenant1',
+                              'http://somehost.com/api/tenant/tenant2',
+                              'http://somehost.com/api/tenant/tenant3'],
+                gearman_server='localhost',
+                job_name=['testjob1', 'testjob2'])
+            args = logscraper.get_arguments()
+            logscraper.run(args)
+            self.assertEqual(2, mock_scraping.call_count)
 
     @mock.patch('socket.socket')
     def test_check_connection(self, mock_socket):
@@ -159,7 +201,7 @@ class TestScraper(base.TestCase):
     def test_get_last_job_results(self, mock_get_builds):
         job_result = logscraper.get_last_job_results(
             'http://somehost.com/api/tenant/tenant1', False, '1234',
-            'someuuid')
+            'someuuid', None)
         self.assertEqual([{'uuid': '1234'}], list(job_result))
         self.assertEqual(1, mock_get_builds.call_count)
 
@@ -171,7 +213,7 @@ class TestScraper(base.TestCase):
 
         job_result = logscraper.get_last_job_results(
             'http://somehost.com/api/tenant/tenant1', False, 'somevalue',
-            'someuuid')
+            'someuuid', None)
         self.assertRaises(ValueError, make_fake_list, job_result)
 
     @mock.patch('multiprocessing.pool.Pool.map')

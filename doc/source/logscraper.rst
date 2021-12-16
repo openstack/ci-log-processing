@@ -37,6 +37,12 @@ Example:
 
   logscraper --gearman-server localhost --zuul-api-url https://zuul.opendev.org/api/tenant/openstack --zuul-api-url https://zuul.opendev.org/api/tenant/zuul --zuul-api-url https://zuul.opendev.org/api/tenant/local --checkpoint-file /tmp/someresults.txt --follow
 
+* scrape logs from two defined job names: `tripleo-ci-centos-8-containers-multinode` and `openstack-tox-linters` for tenants: `openstack` and `local`:
+
+.. code-block::
+
+  logscraper --gearman-server localhost --job-name tripleo-ci-centos-8-containers-multinode --job-name openstack-tox-linters --zuul-api-url https://zuul.opendev.org/api/tenant/openstack --zuul-api-url https://zuul.opendev.org/api/tenant/local
+
 
 Containerize tool
 -----------------
