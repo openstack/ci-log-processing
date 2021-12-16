@@ -177,10 +177,6 @@ class TestScraper(base.TestCase):
     @mock.patch('multiprocessing.pool.Pool.map')
     @mock.patch('builtins.open', new_callable=mock.mock_open())
     @mock.patch('os.path.isfile')
-    @mock.patch('logscraper.logscraper.GEARMAN_PORT',
-                return_value=4731)
-    @mock.patch('logscraper.logscraper.GEARMAN_SERVER',
-                return_value='localhost')
     @mock.patch('logscraper.logscraper.check_specified_files',
                 return_value=['job-output.txt'])
     @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
@@ -188,10 +184,10 @@ class TestScraper(base.TestCase):
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
                     gearman_server='localhost',
+                    gearman_port=4731,
                     workers=1))
     def test_run_scraping(self, mock_args, mock_submit, mock_files,
-                          mock_server, mock_port, mock_isfile, mock_readfile,
-                          mock_map):
+                          mock_isfile, mock_readfile, mock_map):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             args = logscraper.get_arguments()
@@ -199,6 +195,7 @@ class TestScraper(base.TestCase):
             logscraper.run_scraping(args,
                                     'http://somehost.com/api/tenant/tenant1')
             self.assertEqual(builds_result[0], mock_map.call_args.args[1][0])
+            self.assertIn("build_args", mock_map.call_args.args[1][0])
 
     @mock.patch('logscraper.logscraper.run_scraping')
     def test_run(self, mock_scraping):

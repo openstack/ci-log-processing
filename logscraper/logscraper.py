@@ -37,9 +37,6 @@ from distutils.version import StrictVersion as s_version
 import tenacity
 
 
-GEARMAN_SERVER = None
-GEARMAN_PORT = None
-
 file_to_check = [
     "job-output.txt.gz",
     "job-output.txt",
@@ -380,13 +377,14 @@ def get_last_job_results(zuul_url, insecure, max_skipped, last_uuid):
 ###############################################################################
 #                              Log scraper                                    #
 ###############################################################################
-def check_specified_files(job_result):
+def check_specified_files(job_result, insecure):
     """Return list of specified files if they exists on logserver. """
     available_files = []
     for f in file_to_check:
         if not job_result["log_url"]:
             continue
-        response = requests_get("%s%s" % (job_result["log_url"], f))
+        response = requests_get("%s%s" % (job_result["log_url"], f),
+                                insecure)
         if response.status_code == 200:
             available_files.append(f)
     return available_files
@@ -403,6 +401,8 @@ def setup_logging(debug):
 
 def run_build(build):
     """Submit job informations into log processing system. """
+    args = build.pop("build_args")
+
     logging.info(
         "Processing logs for %s | %s | %s | %s",
         build["job_name"],
@@ -414,13 +414,13 @@ def run_build(build):
     results = dict(files=[], jobs=[], invocation={})
 
     lmc = LogMatcher(
-        GEARMAN_SERVER,
-        GEARMAN_PORT,
+        args.gearman_server,
+        args.gearman_port,
         build["result"],
         build["log_url"],
         {},
     )
-    results["files"] = check_specified_files(build)
+    results["files"] = check_specified_files(build, args.insecure)
 
     lmc.submitJobs("push-log", results["files"], build)
 
@@ -450,6 +450,7 @@ def run_scraping(args, zuul_api_url):
         logging.debug("Working on build %s" % build['uuid'])
         # add missing informations
         build["tenant"] = config.tenant
+        build["build_args"] = args
         builds.append(build)
 
     logging.info("Processing %d builds", len(builds))
@@ -474,14 +475,8 @@ def run(args):
 
 
 def main():
-    global GEARMAN_SERVER
-    global GEARMAN_PORT
-
     args = get_arguments()
     setup_logging(args.debug)
-
-    GEARMAN_SERVER = args.gearman_server
-    GEARMAN_PORT = args.gearman_port
     while True:
         run(args)
         if not args.follow:
