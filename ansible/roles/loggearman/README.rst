@@ -1,5 +1,5 @@
-Openstack Log Processor Tools
-=============================
+Loggearman ansible role
+=======================
 
 The goal of this role is to setup and configure service related
 to `log-gearman-client` and `log-gearman-worker` scripts, that

@@ -167,8 +167,8 @@ def get_arguments():
     parser.add_argument("--gearman-server", help="Gearman host addresss",
                         required=True)
     parser.add_argument("--gearman-port", help="Gearman listen port. "
-                        "Defaults to 4731.",
-                        default=4731)
+                        "Defaults to 4730.",
+                        default=4730)
     parser.add_argument("--follow", help="Keep polling zuul builds",
                         action="store_true")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
