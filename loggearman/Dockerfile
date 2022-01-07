@@ -12,13 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM opendevorg/python-builder:3.8 as builder
+FROM docker.io/opendevorg/python-builder:3.8 as builder
 
 ENV OSLO_PACKAGE_VERSION='0.0.1'
 COPY . /tmp/src
 RUN assemble
 
-FROM opendevorg/python-base:3.8 as loggearman
+FROM docker.io/opendevorg/python-base:3.8 as loggearman
 
 COPY --from=builder /output/ /output
 RUN /output/install-from-bindep

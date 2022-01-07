@@ -25,9 +25,6 @@
     name: podman
     state: present
 
-- name: Pull image
-  shell: "podman pull {{ container_images['logscraper'] }}"
-
 - name: Configure logscraper service
   include_tasks: service.yml
   loop: "{{ tenant_builds }}"

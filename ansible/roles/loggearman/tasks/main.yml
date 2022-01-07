@@ -39,9 +39,6 @@
     name: podman
     state: present
 
-- name: Pull image
-  shell: "podman pull {{ container_images['loggearman'] }}"
-
 - name: Create configuration files
   template:
     src: "{{ item }}.yml.j2"
