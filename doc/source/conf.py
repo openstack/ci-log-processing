@@ -23,7 +23,7 @@ source_suffix = '.rst'
 # The master toctree document.
 master_doc = 'index'
 # General information about the project.
-project = u'Openstack System Documentation'
+project = 'Openstack System Documentation'
 copyright = ('%d, Openstack Contributors.' % datetime.date.today().year)
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -46,6 +46,6 @@ html_theme_options = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'system-config.tex', u'system-config Documentation',
-   u'OpenStack CI Log Processing team', 'manual'),
+  ('index', 'system-config.tex', 'system-config Documentation',
+   'OpenStack CI Log Processing team', 'manual'),
 ]
