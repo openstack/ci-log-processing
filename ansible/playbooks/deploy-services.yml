@@ -35,10 +35,17 @@
         state: started
         enabled: true
 
-    - name: Configure firewalld
+    - name: Configure firewalld for gearman
       firewalld:
         zone: internal
         port: "{{ gearman_port }}/{{ output_mode }}"
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Expose Prometheus node exporter metrics for softwarefactory-project.io
+      firewalld:
+        rich_rule: 'rule family=ipv4 source address=38.102.83.250/32 port port=9100 protocol=tcp accept'
         state: enabled
         permanent: true
         immediate: true
