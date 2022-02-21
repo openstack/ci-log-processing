@@ -18,13 +18,13 @@ FROM quay.io/centos/centos:stream8
 ENV OSLO_PACKAGE_VERSION='0.0.1'
 ENV PATH=~/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN groupadd loggearman && \
-    useradd --home-dir /home/loggearman -g loggearman loggearman
+RUN groupadd --gid 1000 loggearman && \
+    useradd --home-dir /home/loggearman --gid 1000 --uid 1000 loggearman
 
 RUN dnf update -y && \
-    dnf install -y python3 python3-setuptools \
-                   python3-devel python3-wheel \
-                   python3-pip git
+    dnf install -y python38 python38-setuptools \
+                   python38-devel python38-wheel \
+                   python38-pip git
 
 COPY . /tmp/src
 RUN cd /tmp/src && \

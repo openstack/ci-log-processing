@@ -13,6 +13,14 @@
     owner: root
     group: root
 
+- name: Set empty logscraper checkpoint file
+  file:
+    path: "{{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }}"
+    state: touch
+    owner: "{{ logscraper_user }}"
+    group: "{{ logscraper_group }}"
+    mode: "0644"
+
 - name: Enable and restart service
   service:
     name: logscraper-{{ item.tenant }}

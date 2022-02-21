@@ -17,13 +17,13 @@ FROM quay.io/centos/centos:stream8
 
 ENV PATH=/workspace/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN groupadd logscraper && \
-    useradd --home-dir /home/logscraper -g logscraper logscraper
+RUN groupadd logscraper --gid 1000 && \
+    useradd --home-dir /home/logscraper --gid 1000 --uid 1000 logscraper
 
 RUN dnf update -y && \
-    dnf install -y python3 python3-setuptools \
-                   python3-devel python3-wheel \
-                   python3-pip git
+    dnf install -y python38 python38-setuptools \
+                   python38-devel python38-wheel \
+                   python38-pip git
 
 COPY . /tmp/src
 RUN cd /tmp/src && \

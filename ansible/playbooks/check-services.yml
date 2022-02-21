@@ -22,5 +22,11 @@
           - https://zuul.opendev.org/api/tenant/openstack
         insecure: false
         job_names: []
+  pre_tasks:
+    - name: Update all packages
+      become: true
+      package:
+        name: "*"
+        state: latest
   roles:
     - check-services
