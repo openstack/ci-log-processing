@@ -1,0 +1,27 @@
+---
+logsender_user: logscraper
+logsender_group: logscraper
+logscraper_gid: 10210
+logscraper_uid: 10210
+
+container_images:
+  # FIXME: Create new project on Docker hub that will contain that image
+  logsender: quay.rdoproject.org/software-factory/logscraper:latest
+
+# Elasticsearch configuration
+# tenant_builds:
+#   - tenant: sometenant
+#     es_host: localhost
+#     es_port: 9200
+#     es_username: logstash
+#     es_password: logstash
+#     es_index_prefix: ""
+#     es_index: ""
+#     es_insecure: false
+#     download_dir: /mnt/logscraper/sometenant
+#     doc_type: "_doc"
+#     logsender_workers: 1
+#     chunk_size: 1500
+#     keep: true
+#     ignore_es_status: false
+tenant_builds: []

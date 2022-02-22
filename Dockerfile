@@ -37,4 +37,3 @@ RUN dnf remove -y python3-devel git && \
     rm -rf ~/.cache/pip
 
 USER logscraper
-ENTRYPOINT ["/usr/local/bin/logscraper"]

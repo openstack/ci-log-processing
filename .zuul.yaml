@@ -7,6 +7,14 @@
       nodes:
         - name: centos-8-stream
           label: centos-8-stream
+- job:
+    name: ci-log-processing-functional-test-centos-8-stream-sender
+    description: Test is validating Logscraper and logsender services
+    run: ansible/playbooks/check-services-sender.yml
+    nodeset:
+      nodes:
+        - name: centos-8-stream
+          label: centos-8-stream
 
 - project:
     templates:
@@ -18,4 +26,5 @@
         - openstack-tox-pep8
         - openstack-tox-py38
         - ci-log-processing-functional-test-centos-8-stream
+        - ci-log-processing-functional-test-centos-8-stream-sender
     gate: *logcheck

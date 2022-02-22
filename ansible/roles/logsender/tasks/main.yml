@@ -1,0 +1,23 @@
+---
+- name: Create dedicated group
+  group:
+    name: "{{ logsender_group }}"
+    state: present
+
+- name: Create dedicated user
+  user:
+    name: "{{ logsender_user }}"
+    state: present
+    comment: "Dedicated user for logsender"
+    group: "{{ logsender_group }}"
+    shell: "/sbin/nologin"
+    create_home: false
+
+- name: Ensure container software is installed
+  package:
+    name: podman
+    state: present
+
+- name: Configure logsender service
+  include_tasks: service.yml
+  loop: "{{ tenant_builds }}"

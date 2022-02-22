@@ -1,0 +1,122 @@
+---
+- name: Install packages
+  package:
+    name: podman
+    state: present
+
+### BUILD CONTAINER IMAGES ###
+- name: Build container images
+  block:
+    - name: Build logscraper container image - Zuul
+      shell: >
+        podman build -t quay.io/logscraper:dev -f Dockerfile
+      args:
+        chdir: "{{ zuul.projects['opendev.org/openstack/ci-log-processing'].src_dir }}"
+      when: zuul is defined
+
+    - name: Build logscraper container image - non Zuul
+      shell: >
+        podman build -t quay.io/logscraper:dev -f Dockerfile
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: zuul is not defined
+
+    - name: Get logscraper image id
+      shell: |
+        podman images --noheading quay.io/logscraper:dev  | awk '{print $3}'
+      register: _logscraper_image_id
+
+    - name: Print all images
+      shell: |
+        podman images
+
+    - name: Replace container images
+      set_fact:
+        container_images:
+          logscraper: "{{ _logscraper_image_id.stdout }}"
+          logsender: "{{ _logscraper_image_id.stdout }}"
+
+### OPENSEARCH ####
+- name: Setup Opensearch
+  shell: >
+    podman run -d --name opensearch \
+      --network host \
+      -e "discovery.type=single-node" \
+      quay.rdoproject.org/software-factory/opensearch:1.1.0
+
+- name: Wait for Opensearch to be up
+  wait_for:
+    host: 0.0.0.0
+    port: 9200
+    delay: 10
+    timeout: 300
+
+- name: Wait for Opensearch to be up
+  uri:
+    url: "https://0.0.0.0:9200"
+    user: "admin"
+    password: "admin"
+    force_basic_auth: true
+    method: GET
+    validate_certs: false
+    status_code: "200"
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+
+### Logscraper ###
+- name: Setup logscraper service
+  include_role:
+    name: logscraper
+
+### Logsender ###
+- name: Setup logsender service
+  include_role:
+    name: logsender
+
+# Flush handlers before running test
+- name: Force all notified handlers to run now
+  meta: flush_handlers
+
+### service validation ###
+- name: Ensure that all services are available and running
+  shell: |
+    systemctl is-active -q {{ item }}
+  loop:
+    - logscraper-openstack
+    - logsender-openstack
+  register: _service_status
+  failed_when: _service_status.rc != 0
+
+# FIXME: The index is created on the beginning of the logsender work.
+# The playbook should validate if some data has been pushed to the ES.
+- name: Get Opensearch indices
+  uri:
+    url: "https://localhost:9200/_cat/indices"
+    user: "admin"
+    password: "admin"
+    force_basic_auth: true
+    method: GET
+    validate_certs: false
+    status_code: "200"
+    return_content: true
+  register: _opensearch_indices
+  until: "'logstash-logscraper' in _opensearch_indices.content"
+  retries: 30
+  delay: 10
+
+- name: Check if build_branch exists in index content
+  uri:
+    url: "https://localhost:9200/logstash-logscraper"
+    user: "admin"
+    password: "admin"
+    force_basic_auth: true
+    method: GET
+    validate_certs: false
+    status_code: "200"
+    return_content: true
+  register: _opensearch_index_content
+  until: "'build_branch' in _opensearch_index_content.content"
+  retries: 30
+  delay: 10

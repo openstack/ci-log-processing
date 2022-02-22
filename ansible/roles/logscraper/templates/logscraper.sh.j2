@@ -12,6 +12,7 @@
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
     {% endif %}
     {{ container_images['logscraper'] }} \
+    /usr/local/bin/logscraper \
     {% if 'gearman_port' in item and 'gearman_server' in item %}
     --gearman-port {{ item.gearman_port }} \
     --gearman-server {{ item.gearman_server }} \

@@ -1,0 +1,16 @@
+[Unit]
+Description=Logsender service for {{ item.tenant }}
+After=syslog.target network.target
+StartLimitInterval=20
+StartLimitBurst=5
+
+[Service]
+Type=simple
+SyslogIdentifier=logsender-{{ item.tenant }}
+Restart=always
+RestartSec=3s
+ExecStop=-/usr/bin/podman stop -t 10 logsender-{{ item.tenant }}
+ExecStart=/usr/local/bin/logsender-{{ item.tenant }}
+
+[Install]
+WantedBy=multi-user.target

@@ -16,6 +16,7 @@ Contents:
 .. sidebar:: HOWTOs
 
    * :doc:`logscraper`
+   * :doc:`logsender`
    * :doc:`ansible-role`
    * :doc:`loggearman`
    * :doc:`loggearman-role`
@@ -24,6 +25,7 @@ Contents:
    :maxdepth: 2
 
    logscraper
+   logsender
    ansible-role
    loggearman
    loggearman-role
