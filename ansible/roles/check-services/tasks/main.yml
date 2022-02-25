@@ -7,11 +7,19 @@
 ### BUILD CONTAINER IMAGES ###
 - name: Build container images
   block:
-    - name: Build logscraper container image
+    - name: Build logscraper container image - Zuul
       shell: >
         podman build -t quay.io/logscraper:dev -f Dockerfile
       args:
         chdir: "{{ zuul.projects['opendev.org/openstack/ci-log-processing'].src_dir }}"
+      when: zuul is defined
+
+    - name: Build logscraper container image - non Zuul
+      shell: >
+        podman build -t quay.io/logscraper:dev -f Dockerfile
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: zuul is not defined
 
     - name: Get logscraper image id
       shell: |
@@ -23,6 +31,14 @@
         podman build -t quay.io/loggearman:dev -f loggearman/Dockerfile
       args:
         chdir: "{{ zuul.projects['opendev.org/openstack/ci-log-processing'].src_dir }}"
+      when: zuul is defined
+
+    - name: Build loggearman container image - non Zuul
+      shell: >
+        podman build -t quay.io/loggearman:dev -f loggearman/Dockerfile
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: zuul is not defined
 
     - name: Get loggearman image id
       shell: |
@@ -38,7 +54,6 @@
         container_images:
           logscraper: "{{ _logscraper_image_id.stdout }}"
           loggearman: "{{ _loggearman_image_id.stdout }}"
-  when: zuul is defined
 
 ### OPENSEARCH ####
 - name: Setup Opensearch

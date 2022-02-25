@@ -1,4 +1,13 @@
 ---
+- name: Create logscraper download directory
+  file:
+    path: "{{ item.download_dir }}"
+    state: directory
+    recurse: true
+    owner: "{{ logscraper_user }}"
+    group: "{{ logscraper_group }}"
+  when: "'download_dir' in item"
+
 - name: Generate logscraper script
   template:
     src: logscraper.sh.j2

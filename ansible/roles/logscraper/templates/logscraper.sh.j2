@@ -8,9 +8,19 @@
     --uidmap 1000:{{ logscraper_uid }}:1 \
     --name logscraper-{{ item.tenant }} \
     --volume {{ logscraper_dir }}:{{ logscraper_dir }}:z \
+    {% if 'download_dir' in item %}
+    --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
+    {% endif %}
     {{ container_images['logscraper'] }} \
+    {% if 'gearman_port' in item and 'gearman_server' in item %}
     --gearman-port {{ item.gearman_port }} \
     --gearman-server {{ item.gearman_server }} \
+    {% else %}
+    --download \
+    {% endif %}
+    {% if 'download_dir' in item %}
+    --directory {{ item.download_dir }} \
+    {% endif %}
     --checkpoint-file {{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }} \
     --follow \
     --zuul-api-url {{ item.zuul_api_url }}

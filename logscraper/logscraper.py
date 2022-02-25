@@ -23,18 +23,21 @@ The goal is to push recent zuul builds into log gearman processor.
 
 import argparse
 import gear
+import itertools
 import json
 import logging
 import multiprocessing
+import os
 import requests
 import socket
 import sys
 import time
-import urllib
 import yaml
 
+from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion as s_version
 import tenacity
+from urllib.parse import urljoin
 
 
 file_to_check = [
@@ -46,6 +49,8 @@ file_to_check = [
     "var/log/extra/logstash.txt.gz",
     "var/log/extra/errors.txt",
     "var/log/extra/errors.txt.gz",
+    "zuul-info/inventory.yaml",
+    "zuul-info/inventory.yaml.gz"
 ]
 
 # From: https://opendev.org/opendev/base-jobs/src/branch/master/roles/submit-logstash-jobs/defaults/main.yaml # noqa
@@ -165,8 +170,7 @@ def get_arguments():
                         "set multiple times. If not set it would scrape "
                         "every latest builds.",
                         action='append')
-    parser.add_argument("--gearman-server", help="Gearman host addresss",
-                        required=True)
+    parser.add_argument("--gearman-server", help="Gearman host addresss")
     parser.add_argument("--gearman-port", help="Gearman listen port. "
                         "Defaults to 4730.",
                         default=4730)
@@ -181,6 +185,7 @@ def get_arguments():
                         "to log processing system. For example: "
                         "logstash.local:9999")
     parser.add_argument("--workers", help="Worker processes for logscraper",
+                        type=int,
                         default=1)
     parser.add_argument("--max-skipped", help="How many job results should be "
                         "checked until last uuid written in checkpoint file "
@@ -188,6 +193,12 @@ def get_arguments():
                         default=500)
     parser.add_argument("--debug", help="Print more information",
                         action="store_true")
+    parser.add_argument("--download", help="Download logs and do not send "
+                        "to gearman service",
+                        action="store_true")
+    parser.add_argument("--directory", help="Directory, where the logs will "
+                        "be stored. Defaults to: /tmp/logscraper",
+                        default="/tmp/logscraper")
     args = parser.parse_args()
     return args
 
@@ -292,7 +303,7 @@ class LogMatcher(object):
             fields["build_newrev"] = result.get("newrev", "UNKNOWN")
 
         fields["node_provider"] = "local"
-        log_url = urllib.parse.urljoin(result["log_url"], filename)
+        log_url = urljoin(result["log_url"], filename)
         fields["log_url"] = log_url
         fields["tenant"] = result["tenant"]
 
@@ -401,17 +412,45 @@ def get_last_job_results(zuul_url, insecure, max_skipped, last_uuid,
 ###############################################################################
 #                              Log scraper                                    #
 ###############################################################################
-def check_specified_files(job_result, insecure):
-    """Return list of specified files if they exists on logserver. """
-    available_files = []
-    for f in file_to_check:
-        if not job_result["log_url"]:
-            continue
-        response = requests_get("%s%s" % (job_result["log_url"], f),
-                                insecure)
+def save_build_info(directory, build):
+    with open("%s/buildinfo" % directory, "w") as text_file:
+        yaml.dump(build, text_file)
+
+
+def download_file(url, directory, insecure=False):
+    logging.debug("Started fetching %s" % url)
+    filename = url.split("/")[-1]
+    try:
+        response = requests.get(url, verify=insecure, stream=True)
         if response.status_code == 200:
-            available_files.append(f)
-    return available_files
+            if directory:
+                with open("%s/%s" % (directory, filename), 'wb') as f:
+                    for txt in response.iter_content(1024):
+                        f.write(txt)
+            return filename
+    except requests.exceptions.ContentDecodingError:
+        logging.critical("Can not decode content from %s" % url)
+
+
+def check_specified_files(job_result, insecure, directory=None):
+    """Return list of specified files if they exists on logserver. """
+
+    args = job_result.get("build_args")
+    if not job_result["log_url"]:
+        logging.debug("There is no file to download for build "
+                      "uuid: %s" % job_result["uuid"])
+        return
+
+    build_log_urls = [urljoin(job_result["log_url"], s) for s in file_to_check]
+
+    results = []
+    pool = ThreadPoolExecutor(max_workers=args.workers)
+    for page in pool.map(download_file, build_log_urls,
+                         itertools.repeat(directory),
+                         itertools.repeat(insecure)):
+        if page:
+            results.append(page)
+    return results
 
 
 def setup_logging(debug):
@@ -425,7 +464,12 @@ def setup_logging(debug):
 
 def run_build(build):
     """Submit job informations into log processing system. """
-    args = build.pop("build_args")
+    args = build.get("build_args")
+
+    # NOTE: if build result is "ABORTED", there is no any
+    # job result files to parse. Skipping that file.
+    if build["result"].lower() == 'aborted':
+        return
 
     logging.info(
         "Processing logs for %s | %s | %s | %s",
@@ -435,18 +479,36 @@ def run_build(build):
         build["uuid"],
     )
 
-    results = dict(files=[], jobs=[], invocation={})
+    if args.download:
+        logging.debug("Started fetching build logs")
+        directory = "%s/%s" % (args.directory, build["uuid"])
+        try:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+        except PermissionError:
+            logging.critical("Can not create directory %s" % directory)
+        except Exception as e:
+            logging.critical("Exception occured %s on creating dir %s" % (
+                e, directory))
 
-    lmc = LogMatcher(
-        args.gearman_server,
-        args.gearman_port,
-        build["result"],
-        build["log_url"],
-        {},
-    )
-    results["files"] = check_specified_files(build, args.insecure)
+        check_specified_files(build, args.insecure, directory)
+        save_build_info(directory, build)
+    else:
+        logging.debug("Parsing content for gearman service")
+        results = dict(files=[], jobs=[], invocation={})
+        files = check_specified_files(build, args.insecure)
+        if not files:
+            return
+        results["files"] = files
+        lmc = LogMatcher(
+            args.gearman_server,
+            args.gearman_port,
+            build["result"],
+            build["log_url"],
+            {},
+        )
 
-    lmc.submitJobs("push-log", results["files"], build)
+        lmc.submitJobs("push-log", results["files"], build)
 
 
 def check_connection(logstash_url):
@@ -512,6 +574,10 @@ def run(args):
 def main():
     args = get_arguments()
     setup_logging(args.debug)
+    if args.download and args.gearman_server and args.gearman_port:
+        logging.critical("Can not use logscraper to send logs to gearman "
+                         "and dowload logs. Choose one")
+        sys.exit(1)
     while True:
         run(args)
         if not args.follow:

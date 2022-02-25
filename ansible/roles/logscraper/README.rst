@@ -60,10 +60,10 @@ and second one for getting logs from `sometenant` tenant.
           zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
           insecure: False
         - tenant: sometenant
-          gearman_port: 4731
-          gearman_server: someproject.org
           zuul_api_url: https://zuul.opendev.org/api/tenant/sometenant
           insecure: True
+          download: true
+          download_dir: /mnt/logscraper
     roles:
       - logscraper
 
