@@ -2,6 +2,7 @@
 - name: Create dedicated group
   group:
     name: "{{ logscraper_group }}"
+    gid: "{{ logscraper_gid }}"
     state: present
 
 - name: Create dedicated user
@@ -10,6 +11,7 @@
     state: present
     comment: "Dedicated user for logscraper"
     group: "{{ logscraper_group }}"
+    uid: "{{ logscraper_uid }}"
     shell: "/sbin/nologin"
     create_home: false
 
@@ -19,6 +21,7 @@
     state: directory
     owner: "{{ logscraper_user }}"
     group: "{{ logscraper_group }}"
+    mode: "0755"
 
 - name: Ensure container software is installed
   package:

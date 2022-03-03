@@ -4,8 +4,11 @@
 /usr/bin/podman run \
     --network host \
     --rm \
+    --user 1000:1000 \
+    --uidmap 0:{{ loggearman_uid + 1 }}:999 \
+    --uidmap 1000:{{ loggearman_uid }}:1 \
     --name loggearman-{{ item }} \
-    --volume {{ loggearman_dir }}:{{ loggearman_dir }}:Z \
+    --volume {{ loggearman_dir }}:{{ loggearman_dir }}:z \
     --volume {{ loggearman_log_dir }}:{{ loggearman_log_dir }}:z \
     {{ container_images['loggearman'] }} \
     log-gearman-{{ item }} \

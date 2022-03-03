@@ -1,6 +1,8 @@
 ---
 loggearman_user: loggearman
 loggearman_group: loggearman
+loggearman_gid: 10211
+loggearman_uid: 10211
 
 loggearman_dir: /etc/loggearman
 loggearman_log_dir: /var/log/loggearman

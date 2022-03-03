@@ -3,6 +3,9 @@
 /usr/bin/podman run \
     --network host \
     --rm \
+    --user 1000:1000 \
+    --uidmap 0:{{ logscraper_uid + 1 }}:999 \
+    --uidmap 1000:{{ logscraper_uid }}:1 \
     --name logscraper-{{ item.tenant }} \
     --volume {{ logscraper_dir }}:{{ logscraper_dir }}:z \
     {{ container_images['logscraper'] }} \

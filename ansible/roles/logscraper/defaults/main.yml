@@ -1,6 +1,8 @@
 ---
 logscraper_user: logscraper
 logscraper_group: logscraper
+logscraper_gid: 10210
+logscraper_uid: 10210
 logscraper_dir: /etc/logscraper
 
 container_images:
