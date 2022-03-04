@@ -20,7 +20,6 @@ The goal is to get content from build uuid directory and send to Opensearch
 """
 
 import argparse
-import collections
 import copy
 import datetime
 import itertools
@@ -80,8 +79,6 @@ def get_arguments():
                         type=int,
                         default=1500)
     parser.add_argument("--keep", help="Do not remove log directory after",
-                        action="store_true")
-    parser.add_argument("--ignore-es-status", help="Ignore Opensearch bulk",
                         action="store_true")
     parser.add_argument("--debug", help="Be more verbose",
                         action="store_true")
@@ -180,30 +177,6 @@ def makeFields(build_details, buildinfo):
     return fields
 
 
-def send_bulk(es_client, request, workers, ignore_es_status, chunk_size):
-    """Send bulk request to Opensearch"""
-    try:
-        if ignore_es_status:
-            return collections.deque(helpers.parallel_bulk(
-                es_client, request, thread_count=workers,
-                chunk_size=chunk_size))
-
-        # NOTE: To see bulk update status, we can use:
-        # https://elasticsearch-py.readthedocs.io/en/7.10.0/helpers.html#example
-        for success, info in helpers.parallel_bulk(es_client, request,
-                                                   thread_count=workers,
-                                                   chunk_size=chunk_size):
-            if not success:
-                logging.error("Chunk was not send to Opensearch %s" % info)
-                return
-        # If all bulk updates are fine, return True
-        return True
-    except Exception as e:
-        logging.critical("Exception occured on pushing data to "
-                         "Opensearch %s" % e)
-        return
-
-
 def get_timestamp(line):
     try:
         timestamp_search = re.search(r'[-0-9]{10}\s+[0-9.:]{12}', line)
@@ -245,8 +218,7 @@ def logline_iter(build_file):
                 break
 
 
-def logline_iter_chunk(inner, index, es_fields, doc_type, chunk_size):
-    chunk = []
+def doc_iter(inner, index, es_fields, doc_type, chunk_size):
     for (ts, line) in inner:
         fields = copy.deepcopy(es_fields)
         fields["@timestamp"] = ts
@@ -257,20 +229,23 @@ def logline_iter_chunk(inner, index, es_fields, doc_type, chunk_size):
         fields["message"] = message
 
         doc = {"_index": index, "_type": doc_type, "_source": fields}
-        chunk.append(doc)
-        if len(chunk) >= chunk_size:
-            yield chunk
-            chunk.clear()
-    yield chunk
+        yield doc
 
 
 def send_to_es(build_file, es_fields, es_client, index, workers,
-               ignore_es_status, chunk_size, doc_type):
+               chunk_size, doc_type):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
-    for chunk in logline_iter_chunk(
-            logline_iter(build_file), index, es_fields, doc_type, chunk_size):
-        send_bulk(es_client, chunk, workers, ignore_es_status, chunk_size)
+    try:
+        docs = doc_iter(
+            logline_iter(build_file),
+            index, es_fields, doc_type, chunk_size)
+        return helpers.bulk(es_client, docs)
+    except opensearch_exceptions.TransportError as e:
+        logging.critical("Can not send message to Opensearch. Error: %s" % e)
+    except Exception as e:
+        logging.critical("An error occured on sending message to "
+                         "Opensearch %s" % e)
 
 
 def get_build_information(build_dir):
@@ -300,8 +275,7 @@ def send(ready_directory, args, directory, index, workers):
         es_fields["filename"] = build_file
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  es_fields, es_client, index, workers,
-                                 args.ignore_es_status, args.chunk_size,
-                                 args.doc_type)
+                                 args.chunk_size, args.doc_type)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)
