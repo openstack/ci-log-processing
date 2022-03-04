@@ -1,0 +1,44 @@
+---
+- name: Configure ci-log-processing services
+  hosts: localhost
+  become: true
+  vars:
+    # gearman worker
+    gearman_host: 0.0.0.0
+    gearman_port: 4730
+    # gearman client
+    gearman_client_host: "{{ gearman_host }}"
+    gearman_client_port: "{{ gearman_port }}"
+    # NOTE(dpawlik): For security reasons, the logstash host
+    # address was added to /etc/hosts.
+    output_host: "logstash"
+    output_port: 9999
+    output_mode: tcp
+    # logscraper
+    tenant_builds:
+      - tenant: openstack
+        gearman_server: "{{ gearman_host }}"
+        gearman_port: "{{ gearman_port }}"
+        zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+  roles:
+    - loggearman
+    - logscraper
+  tasks:
+    - name: Install firewalld package
+      yum:
+        name: firewalld
+        state: present
+
+    - name: Start and enable firewalld service
+      service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Configure firewalld
+      firewalld:
+        zone: internal
+        port: "{{ gearman_port }}/{{ output_mode }}"
+        state: enabled
+        permanent: true
+        immediate: true
