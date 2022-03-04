@@ -15,6 +15,7 @@
 # under the License.
 
 import datetime
+import io
 
 from logscraper import logsender
 from logscraper.tests import base
@@ -328,7 +329,7 @@ class TestSender(base.TestCase):
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.send_bulk')
-    @mock.patch('logscraper.logsender.read_text_file')
+    @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 ignore_es_status=False, chunk_size=1000,
@@ -341,7 +342,7 @@ class TestSender(base.TestCase):
         text = ["2022-02-28 09:39:09.596010 | Job console starting...",
                 "2022-02-28 09:39:09.610160 | Updating repositories",
                 "2022-02-28 09:39:09.996235 | Preparing job workspace"]
-        mock_text.return_value = text
+        mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
             '_type': 'zuul',

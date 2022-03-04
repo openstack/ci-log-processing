@@ -115,11 +115,6 @@ def read_yaml_file(file_path):
         return yaml.load(f)
 
 
-def read_text_file(file_path):
-    with open(file_path, 'r') as f:
-        return f.readlines()
-
-
 def get_inventory_info(directory):
     try:
         build_inventory = read_yaml_file("%s/inventory.yaml" % directory)
@@ -230,15 +225,34 @@ def get_message(line):
         return line.replace('\n', '')
 
 
+def open_file(path):
+    return open(path, 'r')
+
+
+def logline_iter(build_file):
+    last_known_timestamp = None
+    with open_file(build_file) as f:
+        while True:
+            line = f.readline()
+            if line:
+                ts = get_timestamp(line)
+                if ts:
+                    last_known_timestamp = ts
+                else:
+                    ts = last_known_timestamp
+                yield (ts, line)
+            else:
+                break
+
+
 def send_to_es(build_file, es_fields, es_client, index, workers,
                ignore_es_status, chunk_size, doc_type):
     """Send document to the Opensearch"""
     request = []
     logging.info("Working on %s" % build_file)
-    file_content = read_text_file(build_file)
-    for line in file_content:
+    for (ts, line) in logline_iter(build_file):
         fields = copy.deepcopy(es_fields)
-        fields["@timestamp"] = get_timestamp(line)
+        fields["@timestamp"] = ts
 
         message = get_message(line)
         if not message:
