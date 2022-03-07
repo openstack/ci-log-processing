@@ -432,15 +432,25 @@ def download_file(url, directory, insecure=False):
         logging.critical("Can not decode content from %s" % url)
 
 
+def is_job_with_result(job_result):
+    results_with_status = ['failure', 'success']
+    if (job_result["result"].lower() in results_with_status and
+            job_result["log_url"]):
+        return True
+
+
+def create_custom_result(job_result, directory):
+    try:
+        with open("%s/custom-job-results.txt" % directory, "w") as f:
+            f.write("%s | %s" % (job_result["end_time"], job_result["result"]))
+    except Exception as e:
+        logging.critical("Can not write custom-job-results.txt %s" % e)
+
+
 def check_specified_files(job_result, insecure, directory=None):
-    """Return list of specified files if they exists on logserver. """
+    """Return list of specified files if they exists on logserver."""
 
     args = job_result.get("build_args")
-    if not job_result["log_url"]:
-        logging.debug("There is no file to download for build "
-                      "uuid: %s" % job_result["uuid"])
-        return
-
     build_log_urls = [urljoin(job_result["log_url"], s) for s in file_to_check]
 
     results = []
@@ -450,6 +460,7 @@ def check_specified_files(job_result, insecure, directory=None):
                          itertools.repeat(insecure)):
         if page:
             results.append(page)
+
     return results
 
 
@@ -463,13 +474,15 @@ def setup_logging(debug):
 
 
 def run_build(build):
-    """Submit job informations into log processing system. """
-    args = build.get("build_args")
+    """Submit job informations into log processing system.
 
-    # NOTE: if build result is "ABORTED", there is no any
-    # job result files to parse. Skipping that file.
-    if build["result"].lower() == 'aborted':
-        return
+    If CI job result is different than 'SUSSESS' or 'FAILURE' and download
+    argument is set, it will create special file: 'custom-job-results.txt'
+    that will contain:
+    job_result["end_time"] | job_result["result"]
+    """
+
+    args = build.get("build_args")
 
     logging.info(
         "Processing logs for %s | %s | %s | %s",
@@ -491,14 +504,27 @@ def run_build(build):
             logging.critical("Exception occured %s on creating dir %s" % (
                 e, directory))
 
-        check_specified_files(build, args.insecure, directory)
+        if is_job_with_result(build):
+            check_specified_files(build, args.insecure, directory)
+        else:
+            # NOTE: if build result is "ABORTED" or "NODE_FAILURE, there is
+            # no any job result files to parse, but we would like to have that
+            # knowledge, so it will create own job-results.txt file that
+            # contains:
+            # build["end_time"] | build["result"]
+            logging.info("There is no log url for the build %s, so no file can"
+                         " be downloaded. Creating custom job-results.txt " %
+                         build["uuid"])
+            create_custom_result(build, directory)
+
         save_build_info(directory, build)
     else:
+        # NOTE: As it was earlier, logs that contains status other than
+        # "SUCCESS" or "FAILUE" will be parsed by Gearman service.
         logging.debug("Parsing content for gearman service")
         results = dict(files=[], jobs=[], invocation={})
         files = check_specified_files(build, args.insecure)
-        if not files:
-            return
+
         results["files"] = files
         lmc = LogMatcher(
             args.gearman_server,
