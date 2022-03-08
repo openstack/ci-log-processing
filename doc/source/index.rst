@@ -13,24 +13,28 @@ service-incident@lists.opendev.org.
 
 Contents:
 
+Indices and tables
+==================
+
+* :ref:`search`
+
 .. sidebar:: HOWTOs
 
    * :doc:`logscraper`
+   * :doc:`logscraper-role`
    * :doc:`logsender`
-   * :doc:`ansible-role`
+   * :doc:`logsender-role`
    * :doc:`loggearman`
    * :doc:`loggearman-role`
 
 .. toctree::
    :maxdepth: 2
 
+   infra-changelog
+   opensearch-configuration
    logscraper
+   logscraper-role
    logsender
-   ansible-role
+   logsender-role
    loggearman
    loggearman-role
-
-Indices and tables
-==================
-
-* :ref:`search`

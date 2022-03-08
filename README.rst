@@ -5,17 +5,16 @@ The goal of this repository is to provide and check
 functionality of new log processing system base on
 zuul log scraper tool.
 
-Zuul Log Scraper
-----------------
+Log Scraper
+-----------
 
-The Zuul Log Scraper tool is responsible for periodical
+The Log Scraper tool is responsible for periodical
 check by using Zuul CI API if there are new builds available
 and if there are some, it would push the informations to
 the log processing system.
 
-
-Zuul Log Sender
----------------
+Log Sender
+----------
 
 The Zuul Log Sender tool is responsible for periodical check
 directory, if there are some files that should be send to the
@@ -23,6 +22,118 @@ Elasticsearch service.
 NOTE: build directories that does not provide files `buildinfo`
 and `inventory.yaml` file are skipped.
 
+
+Available workflows
+-------------------
+
+The Openstack CI Log Processing project is providing two configurations
+for sending logs from Zuul CI to the Opensearch host.
+
+1. Logscraper, log gearman client, log gearman worker, logstash
+
+With this solution, log workflow looks like:
+
+.. code-block:: shell
+
+   +------------------+  1. Get last builds info  +----------------+
+   |                  |-------------------------> |                |
+   |    Logscraper    |                           |     Zuul API   |
+   |                  |<------------------------- |                |
+   +------------------+  2. Fetch data            +----------------+
+            |
+            |
+            +-------------------+
+                                |
+                                |
+                3. Send queue   |
+                logs to gearman |
+                client          |
+                                v
+                      +------------------+
+                      |                  |
+                      |  Log gearman     |
+                      |     client       |
+                      +------------------+
+           +--------------           --------------+
+           |                    |                  |
+           |  4. Consume queue, |                  |
+           | download log files |                  |
+           |                    |                  |
+           v                    v                  v
+   +---------------+   +----------------+  +---------------+
+   |  Log gearman  |   |   Log gearman  |  | Log gearman   |
+   |  worker       |   |   worker       |  | worker        |
+   +---------------+   +----------------+  +---------------+
+          |                     |                  |
+          |   5. Send to        |                  |
+          |      Logstash       |                  |
+          |                     v                  |
+          |            +----------------+          |
+          |            |                |          |
+          +--------->  |    Logstash    |  <-------+
+                       |                |
+                       +----------------+
+                               |
+                 6. Send to    |
+                    Opensearch |
+                               |
+                      +--------v--------+
+                      |                 |
+                      |    Opensearch   |
+                      |                 |
+                      +-----------------+
+
+
+On the beginning, this project was designed to use that solution, but
+it have a few bottlenecks:
+- log gearman client can use many memory, when log gearman worker is not fast,
+- one log gearman worker is not enough even on small infrastructure,
+- logstash service can fail,
+- logscraper is checking if log files are available, then log gearman
+  is downloading the logs, which can make an issue on log sever, that
+  host does not have free socket.
+
+You can deploy your log workflow by using example Ansible playbook that
+you can find in `ansible/playbooks/check-services.yml` in this project.
+
+2. Logscraper, logsender
+
+This workflow removes bottlenecks by removing: log gearman client,
+log gearman worker and logstash service. Logs are downloaded when
+available to the disk, then parsed by logsender and send directly to the
+Opensearch host.
+
+With this solution, log workflow looks like:
+
+.. code-block:: shell
+
+                                          1. Get last
+                   +----------------+     builds info       +-----------------+
+                   |                | --------------------> |                 |
+                   |   Logscraper   |                       |  Zuul API       |
+                   |                | <-------------------- |                 |
+                   +----------------+    2. Fetch data      +-----------------+
+                           |
+   3. Download logs;       |
+   include inventory.yaml  |
+   and build info          v
+                   +----------------+
+                   |                |
+                   |   Logsender    |
+                   |                |
+                   +----------------+
+                           |
+    4. Parse log files;    |
+    add required fields;   |
+    send to Opensearch     v
+                  +-----------------+
+                  |                 |
+                  |   Opensearch    |
+                  |                 |
+                  +-----------------+
+
+You can deploy your log workflow by using example Ansible playbook that
+you can find in `ansible/playbooks/check-services-sender.yml` in this project.
 
 Testing
 -------

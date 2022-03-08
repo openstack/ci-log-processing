@@ -1,0 +1,1 @@
+../../opensearch-config/README.md
