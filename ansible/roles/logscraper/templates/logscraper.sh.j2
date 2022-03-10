@@ -7,13 +7,14 @@
     --uidmap 0:{{ logscraper_uid + 1 }}:999 \
     --uidmap 1000:{{ logscraper_uid }}:1 \
     --name logscraper-{{ item.tenant }} \
-    --volume {{ logscraper_dir }}:{{ logscraper_dir }}:z \
+    --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
     {% if 'download_dir' in item %}
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
     {% endif %}
     {{ container_images['logscraper'] }} \
     /usr/local/bin/logscraper \
     --zuul-api-url {{ item.zuul_api_url }} \
+    --config {{ logscraper_dir }}/config.yaml \
     {% if 'job_name' in item %}
     {% for job in item['job_name'] %}
     --job-name {{ job }} \

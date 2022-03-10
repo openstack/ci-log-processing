@@ -132,11 +132,6 @@
   include_role:
     name: loggearman
 
-### Logscraper ###
-- name: Setup logscraper service
-  include_role:
-    name: logscraper
-
 # Flush handlers before running test
 - name: Force all notified handlers to run now
   meta: flush_handlers
@@ -148,6 +143,11 @@
     port: "{{ gearman_port }}"
     delay: 10
     timeout: 300
+
+### Logscraper ###
+- name: Setup logscraper service
+  include_role:
+    name: logscraper
 
 - name: Ensure that all services are available and running
   shell: |

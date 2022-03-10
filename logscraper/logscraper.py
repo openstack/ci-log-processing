@@ -79,101 +79,6 @@ import tenacity
 from urllib.parse import urljoin
 
 
-file_to_check = [
-    "job-output.txt.gz",
-    "job-output.txt",
-    "postci.txt",
-    "postci.txt.gz",
-    "var/log/extra/logstash.txt",
-    "var/log/extra/logstash.txt.gz",
-    "var/log/extra/errors.txt",
-    "var/log/extra/errors.txt.gz",
-    "zuul-info/inventory.yaml",
-    "zuul-info/inventory.yaml.gz"
-]
-
-# From: https://opendev.org/opendev/base-jobs/src/branch/master/roles/submit-logstash-jobs/defaults/main.yaml # noqa
-logstash_processor_config = """
-files:
-  - name: job-output.txt
-    tags:
-      - console
-      - console.html
-  - name: grenade.sh.txt
-    tags:
-      - console
-      - console.html
-  - name: devstacklog.txt(?!.*summary)
-    tags:
-      - console
-      - console.html
-  - name: apache/keystone.txt
-    tags:
-      - screen
-      - oslofmt
-  - name: apache/horizon_error.txt
-    tags:
-      - apacheerror
-  # TODO(clarkb) Add swift proxy logs here.
-  - name: syslog.txt
-    tags:
-      - syslog
-  - name: tempest.txt
-    tags:
-      - screen
-      - oslofmt
-  - name: javelin.txt
-    tags:
-      - screen
-      - oslofmt
-  # Neutron index log files (files with messages from all test cases)
-  - name: dsvm-functional-index.txt
-    tags:
-      - oslofmt
-  - name: dsvm-fullstack-index.txt
-    tags:
-      - oslofmt
-  - name: screen-s-account.txt
-    tags:
-      - screen
-      - apachecombined
-  - name: screen-s-container.txt
-    tags:
-      - screen
-      - apachecombined
-  - name: screen-s-object.txt
-    tags:
-      - screen
-      - apachecombined
-  # tripleo logs
-  - name: postci.txt
-    tags:
-      - console
-      - postci
-  - name: var/log/extra/logstash.txt
-    tags:
-      - console
-      - postci
-  - name: var/log/extra/errors.txt
-    tags:
-      - console
-      - errors
-  # wildcard logs
-  - name: devstack-gate-.*.txt
-    tags:
-      - console
-      - console.html
-  # NOTE(mriedem): Logs that are known logstash index OOM killers are
-  # blacklisted here until fixed.
-  # screen-monasca-persister.txt: https://storyboard.openstack.org/#!/story/2003911
-  # screen-ovn-northd.txt: https://bugs.launchpad.net/networking-ovn/+bug/1795069
-  - name: screen-(?!(peakmem_tracker|dstat|karaf|kubelet|mistral-engine|monasca-persister|monasca-api|ovn-northd|q-svc)).*.txt
-    tags:
-      - screen
-      - oslofmt
-"""  # noqa
-
-
 retry_request = tenacity.retry(
     # Raise the real exception instead of RetryError
     reraise=True,
@@ -201,6 +106,8 @@ def requests_get_json(url, verify=True):
 def get_arguments():
     parser = argparse.ArgumentParser(description="Fetch and push last Zuul "
                                      "CI job logs into gearman.")
+    parser.add_argument("--config", help="Logscraper config file",
+                        required=True)
     parser.add_argument("--zuul-api-url", help="URL(s) for Zuul API. Parameter"
                         " can be set multiple times.",
                         required=True,
@@ -262,6 +169,7 @@ class Config:
             self.filename = "%s-%s" % (self.filename, job_name)
 
         self.build_cache = BuildCache(self.filename)
+        self.config_file = load_config(args.config)
 
     def save(self):
         try:
@@ -335,12 +243,13 @@ class BuildCache:
 #                             Log Processing                                  #
 ###############################################################################
 class LogMatcher(object):
-    def __init__(self, server, port, success, log_url, host_vars):
+    def __init__(self, server, port, success, log_url, host_vars, config):
         self.client = gear.Client()
         self.client.addServer(server, port)
         self.hosts = host_vars
         self.success = success
         self.log_url = log_url
+        self.config_file = config
 
     def submitJobs(self, jobname, files, result):
         self.client.waitForServer(90)
@@ -364,8 +273,7 @@ class LogMatcher(object):
         out_event = {}
         tags = []
         out_event["fields"] = self.makeFields(file_object, result)
-        config_files = yaml.safe_load(logstash_processor_config)
-        for f in config_files["files"]:
+        for f in self.config_file["files"]:
             if file_object in f["name"] or \
                     file_object.replace(".gz", "") in f["name"]:
                 tags = f["tags"]
@@ -512,6 +420,31 @@ def save_build_info(directory, build):
         yaml.dump(build, text_file)
 
 
+def load_config(config_path):
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f)
+    except PermissionError:
+        logging.critical("Can not open config file %s" % config_path)
+    except Exception as e:
+        logging.critical("Exception occured on reading config file %s" % e)
+
+
+def get_files_to_check(config):
+    files = []
+    if not config:
+        logging.critical("Can not get info from config file")
+        return
+
+    for f in config.get("files", []):
+        files.append(f['name'])
+
+    if files:
+        files = files + [l_file + '.gz' for l_file in files]
+
+    return files
+
+
 def download_file(url, directory, insecure=False):
     logging.debug("Started fetching %s" % url)
     filename = url.split("/")[-1]
@@ -546,7 +479,14 @@ def check_specified_files(job_result, insecure, directory=None):
     """Return list of specified files if they exists on logserver."""
 
     args = job_result.get("build_args")
-    build_log_urls = [urljoin(job_result["log_url"], s) for s in file_to_check]
+    config = job_result.get('config_file')
+
+    check_files = get_files_to_check(config)
+    if not check_files:
+        logging.warning("No file provided to check!")
+        return
+
+    build_log_urls = [urljoin(job_result["log_url"], s) for s in check_files]
 
     results = []
     pool = ThreadPoolExecutor(max_workers=args.workers)
@@ -578,6 +518,7 @@ def run_build(build):
     """
 
     args = build.get("build_args")
+    config_file = build.get("config_file")
 
     logging.info(
         "Processing logs for %s | %s | %s | %s",
@@ -627,6 +568,7 @@ def run_build(build):
             build["result"],
             build["log_url"],
             {},
+            config_file
         )
 
         lmc.submitJobs("push-log", results["files"], build)
@@ -659,6 +601,7 @@ def run_scraping(args, zuul_api_url, job_name=None):
         # add missing informations
         build["tenant"] = config.tenant
         build["build_args"] = args
+        build["config_file"] = config.config_file
         builds.append(build)
 
     logging.info("Processing %d builds", len(builds))

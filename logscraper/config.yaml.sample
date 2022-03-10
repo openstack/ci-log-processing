@@ -1,0 +1,67 @@
+---
+# from https://opendev.org/opendev/base-jobs/src/branch/master/roles/submit-logstash-jobs/defaults/main.yaml
+files:
+  # basic file
+  - name: zuul-info/inventory.yaml
+    tags: []
+  - name: job-output.txt
+    tags:
+      - console
+      - console.html
+  - name: controller/logs/grenade.sh_log.txt
+    tags:
+      - console
+      - console.html
+      - grenade
+  - name: controller/logs/devstacklog.txt
+    tags:
+      - console
+      - console.html
+      - devstack
+  - name: controller/logs/devstacklog.txt.summary
+    tags:
+      - console
+      - console.html
+      - devstack_summary
+  - name: controller/logs/syslog.txt
+    tags:
+      - syslog
+  - name: controller/logs/tempest_log.txt
+    tags:
+      - screen
+      - oslofmt
+      - tempest
+  - name: logs/undercloud/var/log/extra/logstash.txt
+    tags:
+      - console
+      - postci
+  - name: logs/undercloud/var/log/extra/errors.txt
+    tags:
+      - console
+      - errors
+## FIXME: Will be added in the future.
+#  - name: apache/keystone.txt
+#    tags:
+#      - screen
+#      - oslofmt
+#  - name: apache/horizon_error.txt
+#    tags:
+#      - apacheerror
+#  - name: javelin.txt
+#    tags:
+#      - screen
+#      - oslofmt
+#  - name: dsvm-functional-index.txt
+#    tags:
+#      - oslofmt
+#  - name: dsvm-fullstack-index.txt
+#    tags:
+#      - oslofmt
+#  - name: devstack-gate-.*.txt
+#    tags:
+#      - console
+#      - console.html
+#  - name: screen-(?!(peakmem_tracker|dstat|karaf|kubelet|mistral-engine|monasca-persister|monasca-api|ovn-northd|q-svc)).*.txt
+#    tags:
+#      - screen
+#      - oslofmt
