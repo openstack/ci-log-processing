@@ -142,6 +142,13 @@
   meta: flush_handlers
 
 ### service validation ###
+- name: Check if log gearman client is listening
+  wait_for:
+    host: "{{ gearman_host }}"
+    port: "{{ gearman_port }}"
+    delay: 10
+    timeout: 300
+
 - name: Ensure that all services are available and running
   shell: |
     systemctl is-active -q {{ item }}
@@ -152,24 +159,55 @@
   register: _service_status
   failed_when: _service_status.rc != 0
 
-- name: Check if log gearman client is listening
-  wait_for:
-    host: "{{ gearman_host }}"
-    port: "{{ gearman_port }}"
-    delay: 10
-    timeout: 300
-
 - name: Get Opensearch indices
-  uri:
-    url: "https://localhost:9200/_cat/indices"
-    user: "admin"
-    password: "admin"
-    force_basic_auth: true
-    method: GET
-    validate_certs: false
-    status_code: "200"
-    return_content: true
-  register: _opensearch_indices
-  until: "'logstash-logscraper' in _opensearch_indices.content"
-  retries: 30
-  delay: 10
+  block:
+    - name: Get indices
+      uri:
+        url: "https://0.0.0.0:9200/_cat/indices"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_indices
+      until: "'logstash-logscraper' in _opensearch_indices.content"
+      retries: 30
+      delay: 10
+
+  rescue:
+    - name: List all podman containers
+      shell: |
+        podman ps -a
+
+    - name: Get logstash logs
+      shell: |
+        podman logs logstash
+
+    - name: Get opensearch logs
+      shell: |
+        podman logs opensearch
+
+    - name: Get gearman client logs
+      shell: |
+        podman logs loggearman-client
+
+    - name: Get gearman worker logs
+      shell: |
+        podman logs loggearman-worker
+
+    - name: Get indices to fail the test
+      uri:
+        url: "https://0.0.0.0:9200/_cat/indices"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_indices
+      until: "'logstash-logscraper' in _opensearch_indices.content"
+      retries: 3
+      delay: 10
