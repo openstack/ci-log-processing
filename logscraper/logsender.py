@@ -114,8 +114,7 @@ def read_yaml_file(file_path):
 
 def get_inventory_info(directory):
     try:
-        build_inventory = read_yaml_file("%s/inventory.yaml" % directory)
-        return build_inventory['all']['vars']['zuul']
+        return read_yaml_file("%s/inventory.yaml" % directory)
     except FileNotFoundError:
         logging.warning("Can not find inventory.yaml in build "
                         "dir %s" % directory)
@@ -147,31 +146,40 @@ def get_ready_directories(directory):
     return log_files
 
 
+def get_hosts_id(build_inventory):
+    hosts_id = []
+    for _, host_info in build_inventory['all']['hosts'].items():
+        if 'host_id' in host_info.get('nodepool', {}):
+            hosts_id.append(host_info['nodepool']['host_id'])
+    return hosts_id
+
+
 def remove_directory(dir_path):
     logging.debug("Removing directory %s" % dir_path)
     shutil.rmtree(dir_path)
 
 
-def makeFields(build_details, buildinfo):
+def makeFields(build_inventory, buildinfo):
     fields = {}
+    build_details = build_inventory['all']['vars']['zuul']
+
     fields["build_node"] = "zuul-executor"
-    # NOTE: that field is added later
-    # fields["filename"] = build_file
     fields["build_name"] = buildinfo.get("job_name")
     fields["build_status"] = buildinfo["result"]
     fields["project"] = buildinfo.get('project')
     fields["voting"] = int(build_details["voting"])
-    fields["build_set"] = build_details["buildset"]
+    fields["build_set"] = str(build_details["buildset"])
     fields["build_queue"] = build_details["pipeline"]
     fields["build_ref"] = buildinfo.get("ref")
     fields["build_branch"] = buildinfo.get("branch")
     fields["build_change"] = buildinfo.get("change")
     fields["build_patchset"] = buildinfo.get("patchset")
     fields["build_newrev"] = build_details.get("newrev", "UNKNOWN")
-    fields["build_uuid"] = buildinfo.get("uuid")
+    fields["build_uuid"] = str(buildinfo.get("uuid"))
     fields["node_provider"] = "local"
     fields["log_url"] = buildinfo.get("log_url")
     fields["tenant"] = buildinfo.get("tenant")
+    fields["hosts_id"] = get_hosts_id(build_inventory)
     if "executor" in build_details and "hostname" in build_details["executor"]:
         fields["zuul_executor"] = build_details["executor"]["hostname"]
     return fields
@@ -273,6 +281,7 @@ def send(ready_directory, args, directory, index, workers):
 
     for build_file in build_files:
         es_fields["filename"] = build_file
+        es_fields["log_url"] = es_fields["log_url"] + build_file
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  es_fields, es_client, index, workers,
                                  args.chunk_size, args.doc_type)

@@ -242,6 +242,7 @@ parsed_fields = {
     'build_newrev': 'UNKNOWN',
     'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
     'node_provider': 'local',
+    'hosts_id': ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
     'log_url':
     'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
     'tenant': 'openstack',
@@ -303,11 +304,31 @@ class TestSender(base.TestCase):
         directory = '/tmp/testdir'
         index = 'logstash-index'
         workers = 1
+        mock_build_info.return_value = parsed_fields
+        mock_es_client.return_value = 'fake_client_object'
+        expected_fields = {
+            'build_node': 'zuul-executor', 'build_name': 'openstack-tox-py39',
+            'build_status': 'SUCCESS', 'project': 'openstack/neutron',
+            'voting': 1, 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
+            'build_queue': 'check', 'build_ref': 'refs/changes/61/829161/3',
+            'build_branch': 'master', 'build_change': 829161,
+            'build_patchset': '3', 'build_newrev': 'UNKNOWN',
+            'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+            'node_provider': 'local', 'hosts_id':
+            ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
+            'log_url': 'https://somehost/829161/3/check/openstack-tox-py39/'
+                       '38bf2cd/job-result.txt',
+            'tenant': 'openstack', 'zuul_executor': 'ze07.opendev.org',
+            'filename': 'job-result.txt'
+        }
         args = logsender.get_arguments()
         mock_send_to_es.return_value = True
         logsender.send((build_uuid, build_files), args, directory, index,
                        workers)
         self.assertTrue(mock_remove_dir.called)
+        mock_send_to_es.assert_called_with(
+            "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
+            'fake_client_object', index, workers, None, '_doc')
 
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')
@@ -384,6 +405,8 @@ class TestSender(base.TestCase):
                 'build_newrev': 'UNKNOWN',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
                 'node_provider': 'local',
+                'hosts_id':
+                ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
                 'log_url':
                 'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
                 'tenant': 'openstack',
@@ -409,6 +432,8 @@ class TestSender(base.TestCase):
                 'build_newrev': 'UNKNOWN',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
                 'node_provider': 'local',
+                'hosts_id':
+                ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
                 'log_url':
                 'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
                 'tenant': 'openstack',
@@ -434,6 +459,8 @@ class TestSender(base.TestCase):
                 'build_newrev': 'UNKNOWN',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
                 'node_provider': 'local',
+                'hosts_id':
+                ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
                 'log_url':
                 'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
                 'tenant': 'openstack',
