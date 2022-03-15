@@ -100,6 +100,31 @@ builds_result = [{
     'ref_url': 'https://review.opendev.org/816486',
     'event_id': '7be89d6aae0944949c3e1b7c811794b0',
     'buildset': {'uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa'}
+}, {
+    'uuid': '123473ce599466e9ae1645f6b123412',
+    'job_name': 'openstack-tox-lower-constraints',
+    'result': 'NODE_FAILURE',
+    'held': False,
+    'start_time': '2021-11-04T08:04:34',
+    'end_time': '2021-11-04T08:04:52',
+    'duration': 18,
+    'voting': True,
+    'log_url': None,
+    'nodeset': 'ubuntu-bionic',
+    'error_detail': None,
+    'final': True,
+    'artifacts': [],
+    'provides': [],
+    'project': 'openstack/nova',
+    'branch': 'stable/victoria',
+    'pipeline': 'check',
+    'change': 816486,
+    'patchset': '1',
+    'ref': 'refs/changes/86/816486/1',
+    'newrev': None,
+    'ref_url': 'https://review.opendev.org/816486',
+    'event_id': '7be89d6aae0944949c3e1b7c811794b0',
+    'buildset': {'uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa'}
 }]
 
 
@@ -307,6 +332,68 @@ class TestScraper(base.TestCase):
                              mock_specified_files.call_args.args[0])
             self.assertTrue(mock_save_buildinfo.called)
 
+    @mock.patch('logscraper.logscraper.create_custom_result')
+    @mock.patch('logscraper.logscraper.check_specified_files')
+    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
+    @mock.patch('gear.BaseClient.waitForServer')
+    @mock.patch('argparse.ArgumentParser.parse_args',
+                return_value=FakeArgs(
+                    zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
+                    workers=1, download=True, directory="/tmp/testdir"))
+    def test_run_aborted_download(self, mock_args, mock_gear, mock_gear_client,
+                                  mock_check_files, mock_custom_result):
+        # Take job result that build_status is "ABORTED" or "NODE_FAILURE"
+        result = builds_result[2]
+        result['files'] = ['job-output.txt']
+        result['tenant'] = 'sometenant'
+        result['build_args'] = logscraper.get_arguments()
+        result_node_fail = builds_result[3]
+        result_node_fail['files'] = ['job-output.txt']
+        result_node_fail['tenant'] = 'sometenant'
+        result_node_fail['build_args'] = logscraper.get_arguments()
+
+        logscraper.run_build(result)
+        logscraper.run_build(result_node_fail)
+        self.assertFalse(mock_gear_client.called)
+        self.assertFalse(mock_check_files.called)
+        self.assertTrue(mock_custom_result.called)
+
+    @mock.patch('logscraper.logscraper.create_custom_result')
+    @mock.patch('logscraper.logscraper.check_specified_files')
+    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
+    @mock.patch('gear.BaseClient.waitForServer')
+    @mock.patch('argparse.ArgumentParser.parse_args',
+                return_value=FakeArgs(
+                    zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
+                    workers=1, gearman_server='localhost',
+                    gearman_port='4731'))
+    def test_run_aborted(self, mock_args, mock_gear, mock_gear_client,
+                         mock_check_files, mock_custom_result):
+        # Take job result that build_status is "ABORTED" or "NODE_FAILURE"
+        result = builds_result[2]
+        result['files'] = ['job-output.txt']
+        result['tenant'] = 'sometenant'
+        result['build_args'] = logscraper.get_arguments()
+        result_node_fail = builds_result[3]
+        result_node_fail['files'] = ['job-output.txt']
+        result_node_fail['tenant'] = 'sometenant'
+        result_node_fail['build_args'] = logscraper.get_arguments()
+
+        logscraper.run_build(result)
+        logscraper.run_build(result_node_fail)
+        self.assertTrue(mock_gear_client.called)
+        self.assertTrue(mock_check_files.called)
+        self.assertFalse(mock_custom_result.called)
+
+    def test_create_custom_result(self):
+        build = builds_result[2]
+        directory = '/tmp/'
+        with mock.patch('builtins.open',
+                        new_callable=mock.mock_open()
+                        ) as mock_file:
+            logscraper.create_custom_result(build, directory)
+            self.assertTrue(mock_file.called)
+
 
 class TestConfig(base.TestCase):
     @mock.patch('sys.exit')
@@ -423,58 +510,6 @@ class TestLogMatcher(base.TestCase):
             "fields": parsed_job,
             "tags": ["job-output.txt", "console", "console.html"]},
             "source_url": "https://t.com/tripleo-8/3982864/job-output.txt"}
-
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='http://somehost.com/api/tenant/sometenant',
-                gearman_server='localhost',
-                gearman_port='4731')
-            args = logscraper.get_arguments()
-            lmc = logscraper.LogMatcher(args.gearman_server, args.gearman_port,
-                                        result['result'], result['log_url'],
-                                        {})
-            lmc.submitJobs('push-log', result['files'], result)
-            mock_gear_client.assert_called_once()
-            self.assertEqual(
-                expected_gear_job,
-                json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
-            )
-
-    @mock.patch('gear.TextJob')
-    @mock.patch('gear.Client.submitJob')
-    @mock.patch('gear.BaseClient.waitForServer')
-    def test_submitJobs_aborted(self, mock_gear, mock_gear_client,
-                                mock_gear_job):
-        # Take job result that build_status is "ABORTED"
-        result = builds_result[2]
-        result['files'] = ['job-output.txt']
-        result['tenant'] = 'sometenant'
-        parsed_job = {
-            'build_branch': 'stable/victoria',
-            'build_change': 816486,
-            'build_name': 'openstack-tox-lower-constraints',
-            'build_node': 'zuul-executor',
-            'build_patchset': '1',
-            'build_queue': 'check',
-            'build_ref': 'refs/changes/86/816486/1',
-            'build_set': {'uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa'},
-            'build_status': 'FAILURE',
-            'build_uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa',
-            'build_zuul_url': 'N/A',
-            'filename': 'job-output.txt',
-            'log_url': 'job-output.txt',
-            'node_provider': 'local',
-            'project': 'openstack/nova',
-            'tenant': 'sometenant',
-            'voting': 1}
-
-        # NOTE: normally ABORTED jobs does not provide log_url,
-        # so source_url will be just a file to iterate.
-        # In the logscraper, aborted jobs are just skipped.
-        expected_gear_job = {"retry": False, "event": {
-            "fields": parsed_job,
-            "tags": ["job-output.txt", "console", "console.html"]},
-            "source_url": "job-output.txt"}
 
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
