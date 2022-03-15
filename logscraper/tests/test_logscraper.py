@@ -14,7 +14,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import json
+import tempfile
 
 from logscraper import logscraper
 from logscraper.tests import base
@@ -236,12 +238,19 @@ class TestScraper(base.TestCase):
                               args.logstash_url)
 
     @mock.patch('logscraper.logscraper.get_builds',
-                return_value=iter([{'uuid': '1234'}]))
-    def test_get_last_job_results(self, mock_get_builds):
+                return_value=iter([{'_id': '1234'}]))
+    @mock.patch('argparse.ArgumentParser.parse_args')
+    def test_get_last_job_results(self, mock_args, mock_get_builds):
+        mock_args.return_value = FakeArgs(
+            zuul_api_url='http://somehost.com/api/tenant/sometenant',
+            gearman_server='localhost',
+            checkpoint_file='/tmp/testfile')
+        args = logscraper.get_arguments()
+        some_config = logscraper.Config(args, args.zuul_api_url)
         job_result = logscraper.get_last_job_results(
             'http://somehost.com/api/tenant/tenant1', False, '1234',
-            'someuuid', None)
-        self.assertEqual([{'uuid': '1234'}], list(job_result))
+            some_config.build_cache, None)
+        self.assertEqual([{'_id': '1234'}], list(job_result))
         self.assertEqual(1, mock_get_builds.call_count)
 
     @mock.patch('logscraper.logscraper.get_builds',
@@ -397,7 +406,7 @@ class TestScraper(base.TestCase):
 
 class TestConfig(base.TestCase):
     @mock.patch('sys.exit')
-    def test_save(self, mock_sys):
+    def test_config_object(self, mock_sys):
         # Assume that url is wrong so it raise IndexError
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
@@ -415,19 +424,20 @@ class TestConfig(base.TestCase):
             logscraper.Config(args, args.zuul_api_url)
             mock_sys.assert_called()
 
+    @mock.patch('logscraper.logscraper.BuildCache.save')
+    @mock.patch('logscraper.logscraper.BuildCache.clean')
+    @mock.patch('argparse.ArgumentParser.parse_args')
+    def test_save(self, mock_args, mock_clean, mock_save):
         # correct url without job name
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='http://somehost.com/api/tenant/sometenant',
-                gearman_server='localhost',
-                checkpoint_file='/tmp/testfile')
-            args = logscraper.get_arguments()
-            with mock.patch('builtins.open',
-                            new_callable=mock.mock_open()
-                            ) as mock_file:
-                some_config = logscraper.Config(args, args.zuul_api_url)
-                some_config.save('123412312341234')
-                mock_file.assert_called_with('/tmp/testfile-sometenant', 'w')
+        mock_args.return_value = FakeArgs(
+            zuul_api_url='http://somehost.com/api/tenant/sometenant',
+            gearman_server='localhost',
+            checkpoint_file='/tmp/testfile')
+        args = logscraper.get_arguments()
+        some_config = logscraper.Config(args, args.zuul_api_url)
+        some_config.save()
+        mock_clean.assert_called_once()
+        mock_save.assert_called_once()
 
 
 class TestLogMatcher(base.TestCase):
@@ -526,3 +536,61 @@ class TestLogMatcher(base.TestCase):
                 expected_gear_job,
                 json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
             )
+
+
+class TestBuildCache(base.TestCase):
+
+    @mock.patch('sqlite3.connect', return_value=mock.MagicMock())
+    def test_create_db(self, mock_connect):
+        filename = '/tmp/somefile'
+        logscraper.BuildCache(filename)
+        mock_connect.assert_called_with(filename)
+        mock_connect.return_value.cursor.assert_called_once()
+
+    @mock.patch('sqlite3.connect')
+    def test_create_table(self, mock_connect):
+        tmp_dir = tempfile.mkdtemp()
+        filename = '%s/testfile' % tmp_dir
+        logscraper.BuildCache(filename)
+        mock_execute = mock_connect.return_value.cursor.return_value.execute
+        mock_execute.assert_called()
+        self.assertEqual('CREATE TABLE IF NOT EXISTS logscraper (uid INTEGER, '
+                         'timestamp INTEGER)',
+                         mock_execute.call_args_list[0].args[0])
+
+    @mock.patch('sqlite3.connect')
+    def test_fetch_data(self, mock_connect):
+        tmp_dir = tempfile.mkdtemp()
+        filename = '%s/testfile' % tmp_dir
+        logscraper.BuildCache(filename)
+        mock_execute = mock_connect.return_value.cursor.return_value.execute
+        mock_execute.assert_called()
+        self.assertEqual('SELECT uid, timestamp FROM logscraper',
+                         mock_execute.call_args_list[2].args[0])
+
+    def test_clean(self):
+        # add old data
+        tmp_dir = tempfile.mkdtemp()
+        filename = '%s/testfile' % tmp_dir
+        cache = logscraper.BuildCache(filename)
+        current_build = {'ffeeddccbbaa': datetime.datetime.now().timestamp()}
+        cache.builds['aabbccddeeff'] = 1647131633
+        cache.builds.update(current_build)
+        cache.save()
+        # check cleanup
+        cache = logscraper.BuildCache(filename)
+        cache.clean()
+        self.assertEqual(current_build, cache.builds)
+
+    @mock.patch('sqlite3.connect')
+    def test_save(self, mock_connect):
+        tmp_dir = tempfile.mkdtemp()
+        filename = '%s/testfile' % tmp_dir
+        cache = logscraper.BuildCache(filename)
+        cache.builds = {'ffeeddccbbaa': datetime.datetime.now().timestamp()}
+        cache.save()
+        mock_many = mock_connect.return_value.cursor.return_value.executemany
+        mock_many.assert_called()
+        expected_call = ('INSERT INTO logscraper VALUES (?,?)',
+                         list(cache.builds.items()))
+        self.assertEqual(expected_call, mock_many.call_args_list[0].args)

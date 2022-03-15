@@ -27,7 +27,7 @@ buildinfo = """
 _id: 17428524
 branch: master
 build_args:
-  checkpoint_file: /tmp/results-checkpoint.txt
+  checkpoint_file: /tmp/results-checkpoint
   debug: false
   directory: /tmp/logscraper
   download: true
