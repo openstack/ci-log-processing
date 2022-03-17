@@ -5,3 +5,5 @@ PyYAML<6.1       # MIT
 tenacity
 opensearch-py<=1.0.0   # Apache-2.0
 ruamel.yaml
+datefinder      # MIT
+parsedatetime   # Apache-2.0

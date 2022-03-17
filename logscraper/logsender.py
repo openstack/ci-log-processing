@@ -21,11 +21,13 @@ The goal is to get content from build uuid directory and send to Opensearch
 
 import argparse
 import copy
+import datefinder
 import datetime
 import itertools
 import logging
 import multiprocessing
 import os
+import parsedatetime
 import re
 import shutil
 import sys
@@ -43,6 +45,8 @@ from ruamel.yaml import YAML
 def get_arguments():
     parser = argparse.ArgumentParser(description="Check log directories "
                                      "and push to the Opensearch service")
+    parser.add_argument("--config", help="Logscraper config file",
+                        required=True)
     parser.add_argument("--directory",
                         help="Directory, where the logs will "
                         "be stored. Defaults to: /tmp/logscraper",
@@ -185,18 +189,51 @@ def makeFields(build_inventory, buildinfo):
     return fields
 
 
-def get_timestamp(line):
+def alt_parse_timeformat(line):
+    """Return isoformat datetime if all parsing fails"""
+    # The paredatetime lib is almost perfect converting timestamp, but
+    # in few logs it increse/decrease year or hour.
+    # Use it as a last hope.
+    p = parsedatetime.Calendar()
+    parse_time = p.parse(line)
+    if parse_time:
+        return datetime.datetime.fromtimestamp(
+            time.mktime(parse_time[0]))
+
+
+def parse_text_timeformat(line):
     try:
-        timestamp_search = re.search(r'[-0-9]{10}\s+[0-9.:]{12}', line)
-        timestamp = (timestamp_search.group() if timestamp_search else
-                     datetime.datetime.utcnow().isoformat())
-        # NOTE: On python 3.6, it should be:
-        # datetime.datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f")
-        # Ci-log-processing is using container with Python 3.8, where
-        # fromisoformat attribute is available.
-        return datetime.datetime.fromisoformat(timestamp).isoformat()
-    except Exception as e:
-        logging.critical("Exception occured on parsing timestamp %s" % e)
+        # check it time is parsed like:
+        # Mar 16 18:41:47 fedora-host some info
+        timestamp_search = re.search(r'\w{3}\s[0-9]{2}\s[0-9.:]{8}',
+                                     line.split("|", 1)[0])
+        if timestamp_search:
+            return datetime.datetime.strptime(
+                timestamp_search.group(), '%b %d %H:%M:%S').replace(
+                    year=datetime.date.today().year)
+    except TypeError:
+        return alt_parse_timeformat(line)
+
+
+def find_time_in_line(line):
+    try:
+        text_timeformat = parse_text_timeformat(line)
+        if text_timeformat:
+            return text_timeformat
+
+        found_date = list(datefinder.find_dates(line))
+        if found_date:
+            return found_date[0]
+    except TypeError:
+        return alt_parse_timeformat(line)
+
+
+def get_timestamp(line):
+    """Parse log time format like and return in iso format"""
+    time = find_time_in_line(line)
+    if time and isinstance(time, datetime.datetime):
+        return time.isoformat(sep='T', timespec='milliseconds').replace(
+            '+00:00', '')
 
 
 def get_message(line):
@@ -210,6 +247,15 @@ def open_file(path):
     return open(path, 'r')
 
 
+def get_file_info(config, build_file):
+    yaml = YAML()
+    with open_file(config) as f:
+        config_files = yaml.load(f)
+        for f in config_files["files"]:
+            if f["name"].split('/')[-1] in build_file:
+                return f
+
+
 def logline_iter(build_file):
     last_known_timestamp = None
     with open_file(build_file) as f:
@@ -219,6 +265,8 @@ def logline_iter(build_file):
                 ts = get_timestamp(line)
                 if ts:
                     last_known_timestamp = ts
+                elif not last_known_timestamp and not ts:
+                    ts = datetime.datetime.utcnow().isoformat()
                 else:
                     ts = last_known_timestamp
                 yield (ts, line)
@@ -244,10 +292,10 @@ def send_to_es(build_file, es_fields, es_client, index, workers,
                chunk_size, doc_type):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
+
     try:
         docs = doc_iter(
-            logline_iter(build_file),
-            index, es_fields, doc_type, chunk_size)
+            logline_iter(build_file), index, es_fields, doc_type, chunk_size)
         return helpers.bulk(es_client, docs)
     except opensearch_exceptions.TransportError as e:
         logging.critical("Can not send message to Opensearch. Error: %s" % e)
@@ -283,6 +331,7 @@ def send(ready_directory, args, directory, index, workers):
         fields = copy.deepcopy(es_fields)
         fields["filename"] = build_file
         fields["log_url"] = fields["log_url"] + build_file
+        fields['tags'] = get_file_info(args.config, build_file)
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, workers,
                                  args.chunk_size, args.doc_type)
