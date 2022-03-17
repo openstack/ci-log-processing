@@ -480,6 +480,8 @@ def create_custom_result(job_result, directory):
     try:
         with open("%s/custom-job-results.txt" % directory, "w") as f:
             f.write("%s | %s" % (job_result["end_time"], job_result["result"]))
+        with open("%s/inventory.yaml" % directory, "w") as f:
+            f.write(job_result["result"])
     except Exception as e:
         logging.critical("Can not write custom-job-results.txt %s" % e)
 

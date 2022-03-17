@@ -155,6 +155,9 @@ def get_ready_directories(directory):
 
 def get_hosts_id(build_inventory):
     hosts_id = []
+    if 'all' not in build_inventory:
+        return hosts_id
+
     for _, host_info in build_inventory['all']['hosts'].items():
         if 'host_id' in host_info.get('nodepool', {}):
             hosts_id.append(host_info['nodepool']['host_id'])
@@ -168,15 +171,21 @@ def remove_directory(dir_path):
 
 def makeFields(build_inventory, buildinfo):
     fields = {}
-    build_details = build_inventory['all']['vars']['zuul']
+
+    if 'all' in build_inventory:
+        # if builds is SUCCESS or FAILURE, it will get inventory with content
+        build_details = build_inventory['all']['vars']['zuul']
+    else:
+        # if custom build provided, inventory.yaml file does not have info
+        build_details = {}
 
     fields["build_node"] = "zuul-executor"
     fields["build_name"] = buildinfo.get("job_name")
     fields["build_status"] = buildinfo["result"]
     fields["project"] = buildinfo.get('project')
-    fields["voting"] = int(build_details["voting"])
-    fields["build_set"] = str(build_details["buildset"])
-    fields["build_queue"] = build_details["pipeline"]
+    fields["voting"] = int(build_details.get("voting", 2))
+    fields["build_set"] = str(build_details.get("buildset", "NONE"))
+    fields["build_queue"] = build_details.get("pipeline", "NONE")
     fields["build_ref"] = buildinfo.get("ref")
     fields["build_branch"] = buildinfo.get("branch")
     fields["build_change"] = buildinfo.get("change")
@@ -340,7 +349,8 @@ def send(ready_directory, args, directory, index):
         fields = copy.deepcopy(es_fields)
         file_name, file_tags = get_file_info(args.config, build_file)
         fields["filename"] = build_file
-        fields["log_url"] = fields["log_url"] + file_name
+        fields["log_url"] = (fields["log_url"] + file_name if fields[
+            "log_url"] else file_name)
         fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, args.chunk_size,
