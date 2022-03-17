@@ -98,7 +98,7 @@ To download logs:
 
    logscraper \
     --zuul-api-url https://zuul.opendev.org/api/tenant/openstack \
-    --checkpoint-file /tmp/results-checkpoint.txt \
+    --checkpoint-file /tmp/results-checkpoint \
     --worker 8 \
     --max-skipped 100 \
     --download \

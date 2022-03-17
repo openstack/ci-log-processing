@@ -18,10 +18,48 @@
 The goal is to push recent zuul builds into log gearman processor.
 
 [ CLI ] -> [ Config ] -> [ ZuulFetcher ] -> [ LogPublisher ]
+
+
+# Zuul builds results are not sorted by end time. Here is a problematic
+scenario:
+
+Neutron01 build starts at 00:00
+Many smolXX build starts and stops at 01:00
+Neutron01 build stops at 02:00
+
+
+When at 01:55 we query the /builds:
+
+- smol42   ends at 01:54
+- smol41   ends at 01:50
+- smol40   ends at 01:49
+- ...
+
+
+When at 02:05 we query the /builds:
+
+- smol42   ends at 01:54    # already in build cache, skip
+- smol41   ends at 01:50    # already in build cache, skip
+- smol40   ends at 01:49    # already in build cache, skip
+- ...
+- neutron01  ends at 02:00  # not in build cache, get_last_job_results yield
+
+Question: when to stop the builds query?
+
+We could check that all the _id value got processed, but that can be tricky
+when long running build are interleaved with short one. For example, the
+scrapper could keep track of the oldest _id and ensure it got them all.
+
+But Instead, we'll always grab the last 1000 builds and process new builds.
+This is not ideal, because we might miss builds if more than 1000 builds
+happens between two query.
+But that will have todo until the zuul builds api can return builds sorted by
+end_time.
 """
 
 
 import argparse
+import datetime
 import gear
 import itertools
 import json
@@ -30,6 +68,7 @@ import multiprocessing
 import os
 import requests
 import socket
+import sqlite3
 import sys
 import time
 import yaml
@@ -190,7 +229,7 @@ def get_arguments():
     parser.add_argument("--max-skipped", help="How many job results should be "
                         "checked until last uuid written in checkpoint file "
                         "is founded",
-                        default=500)
+                        default=1000)
     parser.add_argument("--debug", help="Print more information",
                         action="store_true")
     parser.add_argument("--download", help="Download logs and do not send "
@@ -208,7 +247,6 @@ def get_arguments():
 ###############################################################################
 class Config:
     def __init__(self, args, zuul_api_url, job_name=None):
-        self.checkpoint = None
         url_path = zuul_api_url.split("/")
         if url_path[-3] != "api" and url_path[-2] != "tenant":
             print(
@@ -223,18 +261,74 @@ class Config:
         if job_name:
             self.filename = "%s-%s" % (self.filename, job_name)
 
-        try:
-            with open(self.filename) as f:
-                self.checkpoint = f.readline()
-        except Exception:
-            logging.exception("Can't load the checkpoint. Creating file")
+        self.build_cache = BuildCache(self.filename)
 
-    def save(self, job_uuid):
+    def save(self):
         try:
-            with open(self.filename, 'w') as f:
-                f.write(job_uuid)
+            self.build_cache.save()
         except Exception as e:
-            raise("Can not write status to the checkpoint file %s" % e)
+            logging.critical("Can not write status to the build_cache "
+                             "file %s" % e)
+
+
+class BuildCache:
+    def __init__(self, filepath=None):
+        self.builds = dict()
+
+        if not filepath:
+            logging.critical("No cache file provided. Can not continue")
+            sys.exit(1)
+
+        self.create_db(filepath)
+        self.create_table()
+
+        # clean builds that are older than 1 day
+        self.clean()
+
+        rows = self.fetch_data()
+        if rows:
+            for r in rows:
+                uid, date = r
+                self.builds[uid] = date
+
+    def create_db(self, filepath):
+        try:
+            self.connection = sqlite3.connect(filepath)
+            self.cursor = self.connection.cursor()
+        except Exception as e:
+            logging.critical("Can not create cache DB! Error %s" % e)
+
+    def create_table(self):
+        try:
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS logscraper ("
+                                "uid INTEGER, timestamp INTEGER)")
+        except sqlite3.OperationalError:
+            logging.debug("The logscraper table already exists")
+
+    def fetch_data(self):
+        try:
+            return self.cursor.execute(
+                "SELECT uid, timestamp FROM logscraper").fetchall()
+        except Exception as e:
+            logging.exception("Can't get data from cache file! Error %s" % e)
+
+    def add(self, uid):
+        self.builds[uid] = int(datetime.datetime.now().timestamp())
+
+    def clean(self):
+        # Remove old builds
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        self.cursor.execute("DELETE FROM logscraper WHERE timestamp < %s" %
+                            yesterday.timestamp())
+        self.connection.commit()
+
+    def save(self):
+        self.cursor.executemany('INSERT INTO logscraper VALUES (?,?)',
+                                list(self.builds.items()))
+        self.connection.commit()
+
+    def contains(self, uid):
+        return uid in self.builds
 
 
 ###############################################################################
@@ -396,17 +490,18 @@ def filter_available_jobs(zuul_api_url, job_names, insecure):
     return filtered_jobs
 
 
-def get_last_job_results(zuul_url, insecure, max_skipped, last_uuid,
+def get_last_job_results(zuul_url, insecure, max_builds, build_cache,
                          job_name):
     """Yield builds until we find the last uuid."""
     count = 0
     for build in get_builds(zuul_url, insecure, job_name):
-        if count > int(max_skipped):
-            break
-        if build["uuid"] == last_uuid:
-            break
-        yield build
         count += 1
+        if count > int(max_builds):
+            break
+        if build_cache.contains(build["_id"]):
+            continue
+        build_cache.add(build["_id"])
+        yield build
 
 
 ###############################################################################
@@ -551,14 +646,14 @@ def check_connection(logstash_url):
 def run_scraping(args, zuul_api_url, job_name=None):
     """Get latest job results and push them into log processing service.
 
-    On the end, write newest uuid into checkpoint file, so in the future
-    script will not push log duplication.
+    On the end, write build_cache file, so in the future
+    script will not push duplicate build.
     """
     config = Config(args, zuul_api_url, job_name)
 
     builds = []
     for build in get_last_job_results(zuul_api_url, args.insecure,
-                                      args.max_skipped, config.checkpoint,
+                                      args.max_skipped, config.build_cache,
                                       job_name):
         logging.debug("Working on build %s" % build['uuid'])
         # add missing informations
@@ -578,7 +673,7 @@ def run_scraping(args, zuul_api_url, job_name=None):
         try:
             pool.map(run_build, builds)
         finally:
-            config.save(builds[0]['uuid'])
+            config.save()
 
 
 def run(args):
