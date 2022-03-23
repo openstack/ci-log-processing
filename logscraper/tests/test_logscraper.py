@@ -566,7 +566,7 @@ class TestBuildCache(base.TestCase):
         mock_execute = mock_connect.return_value.cursor.return_value.execute
         mock_execute.assert_called()
         self.assertEqual('SELECT uid, timestamp FROM logscraper',
-                         mock_execute.call_args_list[2].args[0])
+                         mock_execute.call_args_list[3].args[0])
 
     def test_clean(self):
         # add old data
