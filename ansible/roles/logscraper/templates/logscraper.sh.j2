@@ -13,6 +13,12 @@
     {% endif %}
     {{ container_images['logscraper'] }} \
     /usr/local/bin/logscraper \
+    --zuul-api-url {{ item.zuul_api_url }} \
+    {% if 'job_name' in item %}
+    {% for job in item['job_name'] %}
+    --job-name {{ job }} \
+    {% endfor %}
+    {% endif %}
     {% if 'gearman_port' in item and 'gearman_server' in item %}
     --gearman-port {{ item.gearman_port }} \
     --gearman-server {{ item.gearman_server }} \
@@ -22,6 +28,20 @@
     {% if 'download_dir' in item %}
     --directory {{ item.download_dir }} \
     {% endif %}
+    {% if 'insecure' in item %}
+    --insecure \
+    {% endif %}
     --checkpoint-file {{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }} \
-    --follow \
-    --zuul-api-url {{ item.zuul_api_url }}
+    {% if 'logstash_url' in item %}
+    --logstash-url {{ logstash_url }} \
+    {% endif %}
+    {% if 'logscraper_workers' in item %}
+    --workers {{ logscraper_workers }} \
+    {% endif %}
+    {% if 'max_skipped' in item %}
+    --max-skipped {{ max_skipped }} \
+    {% endif %}
+    {% if 'debug' in item %}
+    --debug \
+    {% endif %}
+    --follow

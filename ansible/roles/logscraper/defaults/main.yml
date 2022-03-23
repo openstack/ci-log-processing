@@ -16,9 +16,16 @@ container_images:
 #     gearman_server: logstash.openstack.org
 #     zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
 #     insecure: false
+#     logscraper_workers: 1
 #   - tenant: sometenant
 #     zuul_api_url: https://zuul.opendev.org/api/tenant/sometenant
 #     insecure: true
 #     download: true
 #     download_dir: /mnt/logscraper/sometenant
+#     job_name:
+#       - test
+#       - test_new
+#     logstash_url: https://somelogstash.com:9999
+#     max_skipped: 100
+#     debug: true
 tenant_builds: []
