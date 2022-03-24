@@ -201,7 +201,7 @@ def get_timestamp(line):
 
 def get_message(line):
     try:
-        return line.split("|", 1)[1].replace('\n', '')
+        return line.split("|", 1)[1].replace('\n', '').lstrip()
     except IndexError:
         return line.replace('\n', '')
 
@@ -280,10 +280,11 @@ def send(ready_directory, args, directory, index, workers):
     logging.debug("Provided build info %s" % es_fields)
 
     for build_file in build_files:
-        es_fields["filename"] = build_file
-        es_fields["log_url"] = es_fields["log_url"] + build_file
+        fields = copy.deepcopy(es_fields)
+        fields["filename"] = build_file
+        fields["log_url"] = fields["log_url"] + build_file
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
-                                 es_fields, es_client, index, workers,
+                                 fields, es_client, index, workers,
                                  args.chunk_size, args.doc_type)
 
     if args.keep:
