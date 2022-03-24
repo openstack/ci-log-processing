@@ -542,7 +542,7 @@ class TestSender(base.TestCase):
             '_source': {
                 '@timestamp': '2022-02-28T09:39:09.596000',
                 'field': 'test',
-                'message': ' Job console starting...'
+                'message': 'Job console starting...'
             },
             '_type': '_doc'
         }, {
@@ -550,7 +550,7 @@ class TestSender(base.TestCase):
             '_source': {
                 '@timestamp': '2022-02-28T09:39:09.610000',
                 'field': 'test',
-                'message': ' Updating repositories'
+                'message': 'Updating repositories'
             },
             '_type': '_doc'
         }]
@@ -591,8 +591,8 @@ class TestSender(base.TestCase):
     def test_get_message(self):
         line_1 = "28-02-2022 09:44:58.839036 | Some message"
         line_2 = "2022-02-28 09:44:58.839036 | Other message | other log info"
-        self.assertEqual(" Some message", logsender.get_message(line_1))
-        self.assertEqual(" Other message | other log info",
+        self.assertEqual("Some message", logsender.get_message(line_1))
+        self.assertEqual("Other message | other log info",
                          logsender.get_message(line_2))
 
     def test_get_timestamp(self):

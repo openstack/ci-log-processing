@@ -16,16 +16,14 @@
         es_host: opensearch.logs.openstack.org
         es_port: 443
         es_insecure: false
-        es_index_prefix: 'logstash-logs'
+        es_index_prefix: 'logstash-logs-'
         max_skipped: 1000
         logscraper_workers: 8
         logsender_workers: 2
+  roles:
+    - logscraper
+    - logsender
   tasks:
-    - name: Run check services
-      include_role:
-        name: check-services
-        tasks_from: download.yml
-
     - name: Install firewalld package
       yum:
         name: firewalld

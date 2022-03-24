@@ -20,26 +20,26 @@
     {% endfor %}
     {% endif %}
     {% if 'gearman_port' in item and 'gearman_server' in item %}
-    --gearman-port {{ item.gearman_port }} \
-    --gearman-server {{ item.gearman_server }} \
+    --gearman-port {{ item['gearman_port'] }} \
+    --gearman-server {{ item['gearman_server'] }} \
     {% else %}
     --download \
     {% endif %}
     {% if 'download_dir' in item %}
-    --directory {{ item.download_dir }} \
+    --directory {{ item['download_dir'] }} \
     {% endif %}
     {% if 'insecure' in item %}
     --insecure \
     {% endif %}
     --checkpoint-file {{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }} \
     {% if 'logstash_url' in item %}
-    --logstash-url {{ logstash_url }} \
+    --logstash-url {{ item['logstash_url'] }} \
     {% endif %}
     {% if 'logscraper_workers' in item %}
-    --workers {{ logscraper_workers }} \
+    --workers {{ item['logscraper_workers'] }} \
     {% endif %}
     {% if 'max_skipped' in item %}
-    --max-skipped {{ max_skipped }} \
+    --max-skipped {{ item.max_skipped }} \
     {% endif %}
     {% if 'debug' in item %}
     --debug \
