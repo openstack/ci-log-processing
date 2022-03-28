@@ -21,13 +21,11 @@ The goal is to get content from build uuid directory and send to Opensearch
 
 import argparse
 import copy
-import datefinder
 import datetime
 import itertools
 import logging
 import multiprocessing
 import os
-import parsedatetime
 import re
 import shutil
 import sys
@@ -189,51 +187,38 @@ def makeFields(build_inventory, buildinfo):
     return fields
 
 
-def alt_parse_timeformat(line):
-    """Return isoformat datetime if all parsing fails"""
-    # The paredatetime lib is almost perfect converting timestamp, but
-    # in few logs it increse/decrease year or hour.
-    # Use it as a last hope.
-    p = parsedatetime.Calendar()
-    parse_time = p.parse(line)
-    if parse_time:
-        return datetime.datetime.fromtimestamp(
-            time.mktime(parse_time[0]))
+timestamp_patterns = [
+    # 2022-03-25T17:40:37.220547Z
+    (re.compile(r"(\S+)"), "%Y-%m-%dT%H:%M:%S.%fZ"),
+    # 2022-02-28 09:44:58.839036
+    (re.compile(r"(\S+ \S+)"), "%Y-%m-%d %H:%M:%S.%f"),
+    # Mar 25 17:40:37 : TODO(tdecacqu): fix the log file format
+    # because guessing the YEAR is error prone
+    (re.compile(r"(\S+ \S+ \S+)"), "%b %d %H:%M:%S"),
+    # 2022-03-23T11:46:49+0000 - isoformat
+    (re.compile(r"([0-9-T:]{19})"), "%Y-%m-%dT%H:%M:%S"),
+    # Friday 25 February 2022 09:27:51 +0000 - ansible
+    (re.compile(r"(\S+ [0-9]{2} \S+ [0-9: ]{14})"), "%A %d %B %Y %H:%M:%S")
+]
 
 
-def parse_text_timeformat(line):
+def try_timestamp(regex, fmt, line):
     try:
-        # check it time is parsed like:
-        # Mar 16 18:41:47 fedora-host some info
-        timestamp_search = re.search(r'\w{3}\s[0-9]{2}\s[0-9.:]{8}',
-                                     line.split("|", 1)[0])
-        if timestamp_search:
-            return datetime.datetime.strptime(
-                timestamp_search.group(), '%b %d %H:%M:%S').replace(
-                    year=datetime.date.today().year)
-    except TypeError:
-        return alt_parse_timeformat(line)
-
-
-def find_time_in_line(line):
-    try:
-        text_timeformat = parse_text_timeformat(line)
-        if text_timeformat:
-            return text_timeformat
-
-        found_date = list(datefinder.find_dates(line))
-        if found_date:
-            return found_date[0]
-    except TypeError:
-        return alt_parse_timeformat(line)
+        if match := regex.match(line):
+            timestamp_string = match.groups()[0]
+            date = datetime.datetime.strptime(timestamp_string, fmt)
+            if date.year == 1900:
+                # Handle missing year
+                date = date.replace(year=datetime.date.today().year)
+            return date
+    except ValueError:
+        pass
 
 
 def get_timestamp(line):
-    """Parse log time format like and return in iso format"""
-    time = find_time_in_line(line)
-    if time and isinstance(time, datetime.datetime):
-        return time.isoformat(sep='T', timespec='milliseconds').replace(
-            '+00:00', '')
+    for (regex, fmt) in timestamp_patterns:
+        if res := try_timestamp(regex, fmt, line):
+            return res
 
 
 def get_message(line):
@@ -261,12 +246,15 @@ def logline_iter(build_file):
     with open_file(build_file) as f:
         while True:
             line = f.readline()
+            if last_known_timestamp is None and line.startswith(
+                    "-- Logs begin at "):
+                continue
             if line:
                 ts = get_timestamp(line)
                 if ts:
                     last_known_timestamp = ts
                 elif not last_known_timestamp and not ts:
-                    ts = datetime.datetime.utcnow().isoformat()
+                    ts = datetime.datetime.utcnow()
                 else:
                     ts = last_known_timestamp
                 yield (ts, line)
@@ -277,7 +265,7 @@ def logline_iter(build_file):
 def doc_iter(inner, index, es_fields, doc_type, chunk_size):
     for (ts, line) in inner:
         fields = copy.deepcopy(es_fields)
-        fields["@timestamp"] = ts
+        fields["@timestamp"] = ts.isoformat()
 
         message = get_message(line)
         if not message:

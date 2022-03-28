@@ -545,9 +545,9 @@ class TestSender(base.TestCase):
 
     @mock.patch('logscraper.logsender.logline_iter')
     def test_doc_iter(self, mock_logline):
-        text = [('2022-02-28T09:39:09.596000',
+        text = [(datetime.datetime(2022, 2, 28, 9, 39, 9, 596000),
                  '2022-02-28 09:39:09.596010 | Job console starting...\n'),
-                ('2022-02-28T09:39:09.610000',
+                (datetime.datetime(2022, 2, 28, 9, 39, 9, 610000),
                  '2022-02-28 09:39:09.610160 | Updating repositories\n')]
         expected_chunk = [{
             '_index': 'someindex',
@@ -577,11 +577,11 @@ class TestSender(base.TestCase):
 2022-02-28 09:39:09.996 | Preparing job workspace"""
 
         expected_data = [
-            ('2022-02-28T09:39:09.596',
+            (datetime.datetime(2022, 2, 28, 9, 39, 9, 596000),
              '2022-02-28 09:39:09.596 | Job console starting...\n'),
-            ('2022-02-28T09:39:09.610',
+            (datetime.datetime(2022, 2, 28, 9, 39, 9, 610000),
              '2022-02-28 09:39:09.610 | Updating repositories\n'),
-            ('2022-02-28T09:39:09.996',
+            (datetime.datetime(2022, 2, 28, 9, 39, 9, 996000),
              '2022-02-28 09:39:09.996 | Preparing job workspace')
         ]
         readed_data = mock.mock_open(read_data=text)
@@ -608,29 +608,20 @@ class TestSender(base.TestCase):
                          logsender.get_message(line_2))
 
     def test_get_timestamp(self):
-        line_1 = "28-02-2022 09:44:58.839036 | Some message"
-        line_2 = "2022-02-28 09:44:58.839036 | Other message"
-        self.assertEqual("2022-02-28T09:44:58.839",
-                         logsender.get_timestamp(line_1))
-        self.assertEqual("2022-02-28T09:44:58.839",
-                         logsender.get_timestamp(line_2))
-
-    @mock.patch('logscraper.logsender.get_file_info')
-    def test_get_timestamp_isoformat(self, mock_info):
-        # logstash.log
-        line_1 = "2022-03-21T08:39:18.220547Z | Last metadata expiration"
-        self.assertEqual("2022-03-21T08:39:18.220",
-                         logsender.get_timestamp(line_1))
-
-    def test_get_timestamp_textformat(self):
-        # syslog.log
-        line_1 = "-- Logs begin at Mon 2022-03-21 09:22:16 UTC"
-        line_2 = "Mar 21 09:33:23 fedora-rax-dfw-0028920567 sudo[2786]: zuul "
-        # FIXME: the line_1 should be skipped
-        self.assertEqual('2022-03-21T09:22:16.000',
-                         logsender.get_timestamp(line_1))
-        self.assertEqual("2022-03-21T09:33:23.000",
-                         logsender.get_timestamp(line_2))
+        for (line, expected) in [
+            ("2022-02-28 09:44:58.839036 | Other message",
+             datetime.datetime(2022, 2, 28, 9, 44, 58, 839036)),
+            ("2022-03-21T08:39:18.220547Z | Last metadata expiration",
+             datetime.datetime(2022, 3, 21, 8, 39, 18, 220547)),
+            ("Mar 21 09:33:23 fedora-rax-dfw-0028920567 sudo[2786]: zuul ",
+             datetime.datetime(datetime.date.today().year, 3, 21, 9, 33, 23)),
+            ("2022-03-23T13:09:08.644Z|00040|connmgr|INFO|br-int: added",
+             datetime.datetime(2022, 3, 23, 13, 9, 8)),
+            ("Friday 25 February 2022  09:27:51 +0000 (0:00:00.056)",
+             datetime.datetime(2022, 2, 25, 9, 27, 51)),
+        ]:
+            got = logsender.get_timestamp(line)
+            self.assertEqual(expected, got)
 
     @mock.patch('ruamel.yaml.YAML.load')
     @mock.patch('logscraper.logsender.open_file')

@@ -34,6 +34,8 @@ continuous-integration environment, powered by `Zuul
 Any changes to logscraper script or tests will trigger jobs to
 thoroughly test those changes.
 
+To run a single test: *tox -epy38 <test_name>*
+
 
 Benchmarking
 ------------
