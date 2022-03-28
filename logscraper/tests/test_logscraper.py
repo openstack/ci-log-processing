@@ -423,6 +423,41 @@ class TestScraper(base.TestCase):
             logscraper.create_custom_result(build, directory)
             self.assertTrue(mock_file.called)
 
+    @mock.patch('requests.head')
+    def test_cleanup_logs_to_check(self, mock_requests):
+        # job-results.txt will be skipped as dir, so the file will be not
+        # checked.
+        mock_requests.side_effect = [mock.Mock(status_code=200),
+                                     mock.Mock(status_code=200)]
+        log_url = 'http://somefakeurl/'
+        config_files = ['job-results.txt',
+                        'zuul/logs/zuul/logs/compute/text.txt',
+                        'zuul/logs/test.txt']
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        self.assertListEqual(config_files, files)
+
+    @mock.patch('requests.head')
+    def test_cleanup_logs_to_check_not_found(self, mock_requests):
+        mock_requests.side_effect = [mock.Mock(status_code=404),
+                                     mock.Mock(status_code=404)]
+        log_url = 'http://somefakeurl/'
+        config_files = ['job-results.txt',
+                        'zuul/logs/zuul/logs/compute/text.txt',
+                        'zuul/logs/test.txt']
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        self.assertListEqual(['job-results.txt'], files)
+
+    @mock.patch('requests.head')
+    def test_cleanup_logs_to_check_no_dir(self, mock_requests):
+        mock_requests.side_effect = [mock.Mock(status_code=200),
+                                     mock.Mock(status_code=404)]
+        log_url = 'http://somefakeurl/'
+        config_files = ['job-results.txt',
+                        'compute/logs/atest.txt',
+                        'zuul/logs/test.txt']
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        self.assertEqual(2, len(files))
+
 
 class TestConfig(base.TestCase):
     @mock.patch('logscraper.logscraper.load_config')

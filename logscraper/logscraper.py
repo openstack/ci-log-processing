@@ -484,6 +484,33 @@ def create_custom_result(job_result, directory):
         logging.critical("Can not write custom-job-results.txt %s" % e)
 
 
+def cleanup_logs_to_check(config_files, log_url, insecure):
+    """Check if on logserver exists main directory"""
+    filtered_config_files = []
+    existing_dirs = []
+    directories = set()
+    # get unique directories
+    for config_file in config_files:
+        directories.add(os.path.dirname(config_file))
+
+    # check if directory exists on logserver
+    for directory in directories:
+        # job-results.txt doesn't contain dirname, so it will be an empty value
+        if not directory:
+            continue
+        url = '%s%s' % (log_url, directory)
+        response = requests.head(url, verify=insecure)
+        if response.status_code == 200:
+            existing_dirs.append(directory)
+
+    # remove directories, that does not exists on log server
+    for config_file in config_files:
+        if ('/' not in config_file or os.path.dirname(config_file) in
+                existing_dirs):
+            filtered_config_files.append(config_file)
+    return filtered_config_files
+
+
 def check_specified_files(job_result, insecure, directory=None):
     """Return list of specified files if they exists on logserver."""
 
@@ -495,7 +522,15 @@ def check_specified_files(job_result, insecure, directory=None):
         logging.warning("No file provided to check!")
         return
 
-    build_log_urls = [urljoin(job_result["log_url"], s) for s in check_files]
+    filtered_files = cleanup_logs_to_check(check_files, job_result["log_url"],
+                                           insecure)
+
+    logging.debug("After filtering, files to check are: %s for job "
+                  "result %s" % (filtered_files, job_result['uuid']))
+
+    build_log_urls = [
+        urljoin(job_result["log_url"], s) for s in filtered_files
+    ]
 
     results = []
     pool = ThreadPoolExecutor(max_workers=args.workers)
