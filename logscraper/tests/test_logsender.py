@@ -307,11 +307,10 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
-        workers = 1
         mock_build_info.return_value = parsed_fields
         mock_es_client.return_value = 'fake_client_object'
         tags = ['test', 'info']
-        mock_info.return_value = tags
+        mock_info.return_value = ('job-result.txt', tags)
         expected_fields = {
             'build_node': 'zuul-executor', 'build_name': 'openstack-tox-py39',
             'build_status': 'SUCCESS', 'project': 'openstack/neutron',
@@ -330,12 +329,11 @@ class TestSender(base.TestCase):
         }
         args = logsender.get_arguments()
         mock_send_to_es.return_value = True
-        logsender.send((build_uuid, build_files), args, directory, index,
-                       workers)
+        logsender.send((build_uuid, build_files), args, directory, index)
         self.assertTrue(mock_remove_dir.called)
         mock_send_to_es.assert_called_with(
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
-            'fake_client_object', index, workers, None, '_doc')
+            'fake_client_object', index, None, '_doc')
 
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -350,12 +348,11 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
-        workers = 1
         args = logsender.get_arguments()
+        mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         # No metter what is ES status, it should keep dir
         mock_send_to_es.return_value = None
-        logsender.send((build_uuid, build_files), args, directory, index,
-                       workers)
+        logsender.send((build_uuid, build_files), args, directory, index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -372,11 +369,10 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
-        workers = 1
         args = logsender.get_arguments()
+        mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         mock_send_to_es.return_value = None
-        logsender.send((build_uuid, build_files), args, directory, index,
-                       workers)
+        logsender.send((build_uuid, build_files), args, directory, index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -482,7 +478,7 @@ class TestSender(base.TestCase):
         }]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.workers, args.chunk_size, args.doc_type)
+                             args.chunk_size, args.doc_type)
         self.assertEqual(1, mock_bulk.call_count)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -540,8 +536,8 @@ class TestSender(base.TestCase):
             }
         })
         send_status = logsender.send_to_es(build_file, es_fields, es_client,
-                                           args.index, args.workers,
-                                           args.chunk_size, args.doc_type)
+                                           args.index, args.chunk_size,
+                                           args.doc_type)
         self.assertIsNone(send_status)
 
     @mock.patch('json.load')
@@ -598,7 +594,7 @@ class TestSender(base.TestCase):
             '_type': 'zuul'
         }
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.workers, args.chunk_size, args.doc_type)
+                             args.chunk_size, args.doc_type)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -625,9 +621,8 @@ class TestSender(base.TestCase):
             },
             '_type': '_doc'
         }]
-        chunk_text = list(
-            logsender.doc_iter(text, 'someindex', {'field': 'test'}, '_doc',
-                               1000))
+        chunk_text = list(logsender.doc_iter(
+            text, 'someindex', {'field': 'test'}, '_doc'))
         self.assertEqual(expected_chunk, chunk_text)
 
     def test_logline_iter(self):
@@ -709,27 +704,20 @@ class TestSender(base.TestCase):
     def test_get_file_info(self, mock_open_file, mock_yaml):
         config = {'files': [{
             'name': 'job-output.txt',
-            'timeformat': r'[-0-9]{10}\s+[0-9.:]{12}',
             'tags': ['console', 'console.html']
         }, {'name': 'logs/undercloud/var/log/extra/logstash.txt',
-            'timeformat': 'isoformat',
             'tags': ['console', 'postpci']}]}
-        expected_output_1 = {
-            'name': 'logs/undercloud/var/log/extra/logstash.txt',
-            'timeformat': 'isoformat',
-            'tags': ['console', 'postpci']
-        }
-        expected_output_2 = {
-            'name': 'job-output.txt',
-            'tags': ['console', 'console.html'],
-            'timeformat': '[-0-9]{10}\\s+[0-9.:]{12}'
-        }
+        expected_output_1 = ('logs/undercloud/var/log/extra/logstash.txt',
+                             ['console', 'postpci', 'logstash.txt'])
+        expected_output_2 = ('job-output.txt',
+                             ['console', 'console.html', 'job-output.txt'])
+        expected_output_3 = ('somejob.txt', ['somejob.txt'])
         mock_yaml.return_value = config
         self.assertEqual(expected_output_1, logsender.get_file_info(
             config, './9e7bbfb1a4614bc4be06776658fa888f/logstash.txt'))
         self.assertEqual(expected_output_2, logsender.get_file_info(
             config, './9e7bbfb1a4614bc4be06776658fa888f/job-output.txt'))
-        self.assertIsNone(logsender.get_file_info(
+        self.assertEqual(expected_output_3, logsender.get_file_info(
             config, './9e7bbfb1a4614bc4be06776658fa888f/somejob.txt'))
 
     @mock.patch('logscraper.logsender.get_es_client')
@@ -759,4 +747,4 @@ class TestSender(base.TestCase):
             logsender.prepare_and_send(ready_directories, args)
             self.assertTrue(mock_send.called)
             mock_send.assert_called_with((('builduuid', ['job-result.txt']),
-                                          args, args.directory, args.index, 2))
+                                          args, args.directory, args.index))

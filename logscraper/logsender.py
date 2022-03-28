@@ -244,8 +244,10 @@ def get_file_info(config, build_file):
     with open_file(config) as f:
         config_files = yaml.load(f)
         for f in config_files["files"]:
-            if f["name"].split('/')[-1] in build_file:
-                return f
+            file_name = os.path.basename(f["name"])
+            if build_file.endswith(file_name):
+                return f["name"], f.get('tags', []) + [file_name]
+    return os.path.basename(build_file), [os.path.basename(build_file)]
 
 
 def json_iter(build_file):
@@ -279,7 +281,7 @@ def logline_iter(build_file):
                 break
 
 
-def doc_iter(inner, index, es_fields, doc_type, chunk_size):
+def doc_iter(inner, index, es_fields, doc_type):
     for (ts, line) in inner:
         fields = copy.deepcopy(es_fields)
         fields["@timestamp"] = ts.isoformat()
@@ -293,20 +295,17 @@ def doc_iter(inner, index, es_fields, doc_type, chunk_size):
         yield doc
 
 
-def send_to_es(build_file, es_fields, es_client, index, workers,
-               chunk_size, doc_type):
+def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
 
     try:
         if build_file.endswith('performance.json'):
-            docs = doc_iter(json_iter(build_file), index, es_fields, doc_type,
-                            chunk_size)
-            return helpers.bulk(es_client, docs)
+            docs = doc_iter(json_iter(build_file), index, es_fields, doc_type)
+            return helpers.bulk(es_client, docs, chunk_size=chunk_size)
 
-        docs = doc_iter(
-            logline_iter(build_file), index, es_fields, doc_type, chunk_size)
-        return helpers.bulk(es_client, docs)
+        docs = doc_iter(logline_iter(build_file), index, es_fields, doc_type)
+        return helpers.bulk(es_client, docs, chunk_size=chunk_size)
     except opensearch_exceptions.TransportError as e:
         logging.critical("Can not send message to Opensearch. Error: %s" % e)
     except Exception as e:
@@ -321,7 +320,7 @@ def get_build_information(build_dir):
     return makeFields(build_inventory, buildinfo)
 
 
-def send(ready_directory, args, directory, index, workers):
+def send(ready_directory, args, directory, index):
     """Gen Opensearch fields and send"""
     # NOTE: each process should have own Opensearch session,
     # due error: TypeError: cannot pickle 'SSLSocket' object -
@@ -339,12 +338,13 @@ def send(ready_directory, args, directory, index, workers):
 
     for build_file in build_files:
         fields = copy.deepcopy(es_fields)
+        file_name, file_tags = get_file_info(args.config, build_file)
         fields["filename"] = build_file
-        fields["log_url"] = fields["log_url"] + build_file
-        fields['tags'] = get_file_info(args.config, build_file)
+        fields["log_url"] = fields["log_url"] + file_name
+        fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
-                                 fields, es_client, index, workers,
-                                 args.chunk_size, args.doc_type)
+                                 fields, es_client, index, args.chunk_size,
+                                 args.doc_type)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)
@@ -390,7 +390,6 @@ def prepare_and_send(ready_directories, args):
     """Prepare information to send and Opensearch"""
 
     directory = args.directory
-    workers = args.workers
     index = get_index(args)
     if not index:
         logging.critical("Can not continue without created indices")
@@ -400,8 +399,7 @@ def prepare_and_send(ready_directories, args):
         pool.starmap(send, zip(
             list(ready_directories.items()),
             itertools.repeat(args),
-            itertools.repeat(directory), itertools.repeat(index),
-            itertools.repeat(workers)))
+            itertools.repeat(directory), itertools.repeat(index)))
 
 
 def setup_logging(debug):
