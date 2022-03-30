@@ -1,4 +1,6 @@
 ---
+# NOTE: In the future, this config will include additional settings like
+# username, password, zuul url etc. required by logscraper and logsender.
 # from https://opendev.org/opendev/base-jobs/src/branch/master/roles/submit-logstash-jobs/defaults/main.yaml
 files:
   # basic file
@@ -8,6 +10,7 @@ files:
     tags:
       - console
       - console.html
+  # Devstack
   - name: controller/logs/grenade.sh_log.txt
     tags:
       - console
@@ -26,42 +29,216 @@ files:
   - name: controller/logs/syslog.txt
     tags:
       - syslog
+  # Nova and Placement
   - name: controller/logs/tempest_log.txt
     tags:
       - screen
       - oslofmt
       - tempest
+      - devstack
+  - name: controller/logs/screen-n-api.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-api-meta.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-cond-cell1.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-cond-cell2.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-novnc-cell1.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-novnc-cell2.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-cpu.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-sch.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-n-super-cond.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+  - name: controller/logs/screen-placement-api.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - placement
+  # Neutron
+  - name: controller/logs/screen-q-agt.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  - name: controller/logs/screen-q-dhcp.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  - name: controller/logs/screen-q-l3.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  - name: controller/logs/screen-q-metering.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  - name: controller/logs/screen-q-svc.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  - name: controller/logs/screen-q-ovn-metadata-agent.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+  # Keystone
+  - name: controller/logs/screen-keystone.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - keystone
+  # Cinder
+  - name: controller/logs/screen-c-api.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+  - name: controller/logs/screen-c-bak.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+  - name: controller/logs/screen-c-sch.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+  - name: controller/logs/screen-c-vol.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+  # Glance
+  - name: controller/logs/screen-g-api.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - glance
+  # TripleO
   - name: logs/undercloud/var/log/extra/logstash.txt
     tags:
       - console
       - postci
+      - tripleo
   - name: logs/undercloud/var/log/extra/errors.txt
     tags:
       - console
       - errors
-## FIXME: Will be added in the future.
-#  - name: apache/keystone.txt
-#    tags:
-#      - screen
-#      - oslofmt
-#  - name: apache/horizon_error.txt
-#    tags:
-#      - apacheerror
-#  - name: javelin.txt
-#    tags:
-#      - screen
-#      - oslofmt
-#  - name: dsvm-functional-index.txt
-#    tags:
-#      - oslofmt
-#  - name: dsvm-fullstack-index.txt
-#    tags:
-#      - oslofmt
-#  - name: devstack-gate-.*.txt
-#    tags:
-#      - console
-#      - console.html
-#  - name: screen-(?!(peakmem_tracker|dstat|karaf|kubelet|mistral-engine|monasca-persister|monasca-api|ovn-northd|q-svc)).*.txt
-#    tags:
-#      - screen
-#      - oslofmt
+      - tripleo
+  - name: logs/undercloud/var/log/tempest/tempest_run.log
+    tags:
+      - tempest
+      - tripleo
+  - name: logs/undercloud/var/log/extra/journal.txt
+    tags:
+      - tempest
+      - errors
+      - tripleo
+  # Multinode log results
+  - name: compute1/logs/syslog.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - syslog
+      - multinode
+  - name: compute1/logs/screen-n-cpu.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - nova
+      - multinode
+  - name: compute1/logs/screen-q-agt.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+      - multinode
+  - name: compute1/logs/screen-q-l3.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+      - multinode
+  - name: compute1/logs/screen-q-dhcp.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - neutron
+      - multinode
+  - name: compute1/logs/screen-c-bak.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+      - multinode
+  - name: compute1/logs/screen-c-vol.txt
+    tags:
+      - screen
+      - oslofmt
+      - devstack
+      - cinder
+      - multinode
