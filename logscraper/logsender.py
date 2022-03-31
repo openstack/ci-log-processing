@@ -192,6 +192,8 @@ timestamp_patterns = [
     (re.compile(r"(\S+)"), "%Y-%m-%dT%H:%M:%S.%fZ"),
     # 2022-02-28 09:44:58.839036
     (re.compile(r"(\S+ \S+)"), "%Y-%m-%d %H:%M:%S.%f"),
+    # Mar 31 04:50:23.795709
+    (re.compile(r"(\S+ [0-9]{2}\s[0-9:.]{14})"), "%b %d %H:%M:%S.%f"),
     # Mar 25 17:40:37 : TODO(tdecacqu): fix the log file format
     # because guessing the YEAR is error prone
     (re.compile(r"(\S+ \S+ \S+)"), "%b %d %H:%M:%S"),
