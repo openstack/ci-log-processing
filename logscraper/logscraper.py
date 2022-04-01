@@ -145,6 +145,10 @@ def get_arguments():
     parser.add_argument("--directory", help="Directory, where the logs will "
                         "be stored. Defaults to: /tmp/logscraper",
                         default="/tmp/logscraper")
+    parser.add_argument("--wait-time", help="Pause time for the next "
+                        "iteration",
+                        type=int,
+                        default=120)
     args = parser.parse_args()
     return args
 
@@ -646,7 +650,7 @@ def main():
         run(args)
         if not args.follow:
             break
-        time.sleep(120)
+        time.sleep(args.wait_time)
 
 
 if __name__ == "__main__":

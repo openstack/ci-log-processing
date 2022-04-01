@@ -51,4 +51,7 @@
     {% if 'ignore_es_status' in item and item['ignore_es_status'] %}
     --ignore-es-status \
     {% endif %}
+    {% if 'logsender_wait_time' in item %}
+    --wait-time {{ item['logsender_wait_time'] }} \
+    {% endif %}
     --follow

@@ -84,6 +84,10 @@ def get_arguments():
                         action="store_true")
     parser.add_argument("--debug", help="Be more verbose",
                         action="store_true")
+    parser.add_argument("--wait-time", help="Pause time for the next "
+                        "iteration",
+                        type=int,
+                        default=120)
     args = parser.parse_args()
     return args
 
@@ -426,7 +430,7 @@ def main():
         run(args)
         if not args.follow:
             break
-        time.sleep(60)
+        time.sleep(args.wait_time)
 
 
 if __name__ == "__main__":
