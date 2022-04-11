@@ -192,6 +192,7 @@ class BuildCache:
 
         # clean builds that are older than 1 day
         self.clean()
+        self.vacuum()
 
         rows = self.fetch_data()
         if rows:
@@ -222,6 +223,10 @@ class BuildCache:
 
     def add(self, uid):
         self.builds[uid] = int(datetime.datetime.now().timestamp())
+
+    def vacuum(self):
+        self.cursor.execute("vacuum")
+        self.connection.commit()
 
     def clean(self):
         # Remove old builds
