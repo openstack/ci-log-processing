@@ -28,4 +28,5 @@ container_images:
 #     logstash_url: https://somelogstash.com:9999
 #     max_skipped: 100
 #     debug: true
+#     logscraper_wait_time: 120
 tenant_builds: []

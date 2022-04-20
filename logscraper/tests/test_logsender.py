@@ -271,7 +271,7 @@ class FakeArgs(object):
     def __init__(self, config=None, directory=None, host=None, port=None,
                  username=None, password=None, index_prefix=None, index=None,
                  doc_type=None, insecure=None, follow=None, workers=None,
-                 chunk_size=None, keep=None, debug=None):
+                 chunk_size=None, keep=None, debug=None, wait_time=None):
 
         self.config = config
         self.directory = directory
@@ -288,6 +288,7 @@ class FakeArgs(object):
         self.chunk_size = chunk_size
         self.keep = keep
         self.debug = debug
+        self.wait_time = wait_time
 
 
 class TestSender(base.TestCase):

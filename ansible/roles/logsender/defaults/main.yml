@@ -25,4 +25,5 @@ container_images:
 #     chunk_size: 1500
 #     keep: true
 #     ignore_es_status: false
+#     logsender_wait_time: 60
 tenant_builds: []

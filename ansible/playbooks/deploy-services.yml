@@ -18,8 +18,9 @@
         es_insecure: false
         es_index_prefix: 'logstash-logs-'
         max_skipped: 1000
-        logscraper_workers: 8
-        logsender_workers: 2
+        logscraper_workers: 4
+        logsender_workers: 10
+        logsender_wait_time: 10
   roles:
     - logscraper
     - logsender

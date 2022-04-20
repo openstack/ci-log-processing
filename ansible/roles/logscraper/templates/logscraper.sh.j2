@@ -45,4 +45,7 @@
     {% if 'debug' in item %}
     --debug \
     {% endif %}
+    {% if 'logscraper_wait_time' in item %}
+    --wait-time {{ item['logscraper_wait_time'] }} \
+    {% endif %}
     --follow
