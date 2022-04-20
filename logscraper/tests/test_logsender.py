@@ -543,6 +543,64 @@ class TestSender(base.TestCase):
                                            args.chunk_size, args.doc_type)
         self.assertIsNone(send_status)
 
+    @mock.patch('json.load')
+    @mock.patch('logscraper.logsender.get_file_info')
+    @mock.patch('opensearchpy.helpers.bulk')
+    @mock.patch('logscraper.logsender.open_file')
+    @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
+                directory="/tmp/testdir", index="myindex", workers=1,
+                chunk_size=1000, doc_type="zuul",
+                config='test.yaml'))
+    def test_send_to_es_json(self, mock_args, mock_text, mock_bulk,
+                             mock_file_info, mock_json_load):
+        build_file = 'performance.json'
+        es_fields = parsed_fields
+        es_client = mock.Mock()
+        args = logsender.get_arguments()
+        text = {
+            "transient": {
+                "cluster.index_state_management.coordinator.sweep_period": "1m"
+            },
+            "report": {
+                "timestamp": "2022-04-18T19:51:55.394370",
+                "hostname": "ubuntu-focal-rax-dfw-0029359041"
+            }
+        }
+        mock_json_load.return_value = text
+        mock_text.new_callable = mock.mock_open(read_data=str(text))
+        es_doc = {
+            '_index': 'myindex',
+            '_source': {
+                '@timestamp': '2022-04-18T19:51:55',
+                'build_branch': 'master', 'build_change': 829161,
+                'build_name': 'openstack-tox-py39', 'build_newrev': 'UNKNOWN',
+                'build_node': 'zuul-executor', 'build_patchset': '3',
+                'build_queue': 'check',
+                'build_ref': 'refs/changes/61/829161/3',
+                'build_set': '52b29e0e716a4436bd20eed47fa396ce',
+                'build_status': 'SUCCESS',
+                'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'hosts_id':
+                ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
+                'log_url':
+                'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
+                'message':
+                "{'transient': "
+                "{'cluster.index_state_management.coordinator.sweep_period': "
+                "'1m'}, 'report': {'timestamp': "
+                "'2022-04-18T19:51:55.394370', 'hostname': "
+                "'ubuntu-focal-rax-dfw-0029359041'}}",
+                'node_provider': 'local', 'project': 'openstack/neutron',
+                'tenant': 'openstack', 'voting': 1,
+                'zuul_executor': 'ze07.opendev.org'
+            },
+            '_type': 'zuul'
+        }
+        logsender.send_to_es(build_file, es_fields, es_client, args.index,
+                             args.workers, args.chunk_size, args.doc_type)
+        self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
+        self.assertEqual(1, mock_bulk.call_count)
+
     @mock.patch('logscraper.logsender.logline_iter')
     def test_doc_iter(self, mock_logline):
         text = [(datetime.datetime(2022, 2, 28, 9, 39, 9, 596000),
@@ -589,6 +647,26 @@ class TestSender(base.TestCase):
             generated_text = list(logsender.logline_iter('nofile'))
             self.assertEqual(expected_data, generated_text)
             self.assertTrue(mocked_open_file.called)
+
+    @mock.patch('json.load')
+    @mock.patch('logscraper.logsender.open_file')
+    def test_json_iter(self, mock_open_file, mock_json_load):
+        text = {
+            "transient": {
+                "cluster.index_state_management.coordinator.sweep_period": "1m"
+            },
+            "report": {
+                "timestamp": "2022-04-18T19:51:55.394370",
+                "hostname": "ubuntu-focal-rax-dfw-0029359041"
+            }
+        }
+        mock_json_load.return_value = text
+        result = logsender.json_iter('somefile')
+        self.assertEqual(datetime.datetime(2022, 4, 18, 19, 51, 55),
+                         list(result)[0][0])
+
+        result = logsender.json_iter('somefile')
+        self.assertEqual(str(text), list(result)[0][1])
 
     @mock.patch('logscraper.logsender.read_yaml_file',
                 side_effect=[_parse_get_yaml(buildinfo),
