@@ -23,6 +23,7 @@ import argparse
 import copy
 import datetime
 import itertools
+import json
 import logging
 import multiprocessing
 import os
@@ -247,6 +248,16 @@ def get_file_info(config, build_file):
                 return f
 
 
+def json_iter(build_file):
+    with open_file(build_file) as f:
+        parse_file = json.load(f)
+        if 'report' in parse_file and 'timestamp' in parse_file['report']:
+            ts = get_timestamp(parse_file['report']['timestamp'])
+        else:
+            ts = datetime.datetime.utcnow()
+        yield (ts, str(parse_file))
+
+
 def logline_iter(build_file):
     last_known_timestamp = None
     with open_file(build_file) as f:
@@ -288,6 +299,11 @@ def send_to_es(build_file, es_fields, es_client, index, workers,
     logging.info("Working on %s" % build_file)
 
     try:
+        if build_file.endswith('performance.json'):
+            docs = doc_iter(json_iter(build_file), index, es_fields, doc_type,
+                            chunk_size)
+            return helpers.bulk(es_client, docs)
+
         docs = doc_iter(
             logline_iter(build_file), index, es_fields, doc_type, chunk_size)
         return helpers.bulk(es_client, docs)
