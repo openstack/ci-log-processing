@@ -257,7 +257,7 @@ def json_iter(build_file):
             ts = get_timestamp(parse_file['report']['timestamp'])
         else:
             ts = datetime.datetime.utcnow()
-        yield (ts, str(parse_file))
+        yield (ts, json.dumps(parse_file))
 
 
 def logline_iter(build_file):

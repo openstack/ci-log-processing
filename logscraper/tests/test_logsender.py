@@ -581,17 +581,15 @@ class TestSender(base.TestCase):
                 ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
                 'log_url':
                 'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
-                'message':
-                "{'transient': "
-                "{'cluster.index_state_management.coordinator.sweep_period': "
-                "'1m'}, 'report': {'timestamp': "
-                "'2022-04-18T19:51:55.394370', 'hostname': "
-                "'ubuntu-focal-rax-dfw-0029359041'}}",
+                'message': '{"transient": '
+                '{"cluster.index_state_management.coordinator.sweep_period": '
+                '"1m"}, "report": {"timestamp": '
+                '"2022-04-18T19:51:55.394370", "hostname": '
+                '"ubuntu-focal-rax-dfw-0029359041"}}',
                 'node_provider': 'local', 'project': 'openstack/neutron',
                 'tenant': 'openstack', 'voting': 1,
                 'zuul_executor': 'ze07.opendev.org'
-            },
-            '_type': 'zuul'
+                }, '_type': 'zuul'
         }
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
                              args.chunk_size, args.doc_type)
@@ -662,7 +660,7 @@ class TestSender(base.TestCase):
                          list(result)[0][0])
 
         result = logsender.json_iter('somefile')
-        self.assertEqual(str(text), list(result)[0][1])
+        self.assertEqual(str(text).replace("\'", "\""), list(result)[0][1])
 
     @mock.patch('logscraper.logsender.read_yaml_file',
                 side_effect=[_parse_get_yaml(buildinfo),
