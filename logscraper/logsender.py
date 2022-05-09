@@ -384,6 +384,16 @@ def create_indices(index, args):
         if e.error.lower() == 'resource_already_exists_exception':
             logging.debug("The indices already exists, continue")
             return True
+    except opensearch_exceptions.TransportError as e:
+        # NOTE(dpawlik) To avoid error: "TOO_MANY_REQUESTS/12/disk usage
+        # exceeded flood-stage watermark", let's wait some time before
+        # continue.
+        if 'too_many_requests' in e.error.lower():
+            logging.warning("Cluster is probably overloaded/flooded. "
+                            "Logsender will wait some time, then continue."
+                            "Exception details: %s" % e)
+            time.sleep(120)
+            return True
 
 
 def prepare_and_send(ready_directories, args):
