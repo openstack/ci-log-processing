@@ -502,7 +502,7 @@ def cleanup_logs_to_check(config_files, log_url, insecure):
             continue
         url = '%s%s' % (log_url, directory)
         response = requests.head(url, verify=insecure)
-        if response.status_code == 200:
+        if response.ok:
             existing_dirs.append(directory)
 
     # remove directories, that does not exists on log server

@@ -438,8 +438,8 @@ class TestScraper(base.TestCase):
 
     @mock.patch('requests.head')
     def test_cleanup_logs_to_check_not_found(self, mock_requests):
-        mock_requests.side_effect = [mock.Mock(status_code=404),
-                                     mock.Mock(status_code=404)]
+        mock_requests.side_effect = [mock.Mock(ok=False),
+                                     mock.Mock(ok=False)]
         log_url = 'http://somefakeurl/'
         config_files = ['job-results.txt',
                         'zuul/logs/zuul/logs/compute/text.txt',
@@ -449,8 +449,8 @@ class TestScraper(base.TestCase):
 
     @mock.patch('requests.head')
     def test_cleanup_logs_to_check_no_dir(self, mock_requests):
-        mock_requests.side_effect = [mock.Mock(status_code=200),
-                                     mock.Mock(status_code=404)]
+        mock_requests.side_effect = [mock.Mock(ok=True),
+                                     mock.Mock(ok=False)]
         log_url = 'http://somefakeurl/'
         config_files = ['job-results.txt',
                         'compute/logs/atest.txt',
