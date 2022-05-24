@@ -42,7 +42,7 @@
     podman run -d --name opensearch \
       --network host \
       -e "discovery.type=single-node" \
-      quay.rdoproject.org/software-factory/opensearch:1.1.0
+      quay.io/software-factory/opensearch:1.1.0
 
 - name: Wait for Opensearch to be up
   wait_for:

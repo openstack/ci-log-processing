@@ -9,7 +9,7 @@ loggearman_log_dir: /var/log/loggearman
 
 container_images:
   # FIXME: Move image to dedicated repository on Docker hub.
-  loggearman: quay.rdoproject.org/software-factory/loggearman:latest
+  loggearman: quay.io/software-factory/loggearman:latest
 
 # Gearman client
 gearman_client_host: 0.0.0.0
