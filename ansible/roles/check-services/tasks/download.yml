@@ -46,14 +46,14 @@
 
 - name: Wait for Opensearch to be up
   wait_for:
-    host: 0.0.0.0
+    host: 127.0.0.1
     port: 9200
     delay: 10
     timeout: 300
 
 - name: Wait for Opensearch to be up
   uri:
-    url: "https://0.0.0.0:9200"
+    url: "https://127.0.0.1:9200"
     user: "admin"
     password: "admin"
     force_basic_auth: true
@@ -64,6 +64,10 @@
   until: result.status == 200
   retries: 30
   delay: 10
+
+- name: Reconfigure once again security plugin
+  shell: |
+    podman exec -it opensearch bash -c "JAVA_HOME=/usr/share/opensearch/jdk /usr/share/opensearch/securityadmin_demo.sh"
 
 ### Logscraper ###
 - name: Setup logscraper service
@@ -93,7 +97,7 @@
   block:
     - name: Get indices
       uri:
-        url: "https://0.0.0.0:9200/_cat/indices"
+        url: "https://127.0.0.1:9200/_cat/indices"
         user: "admin"
         password: "admin"
         force_basic_auth: true
@@ -108,7 +112,7 @@
 
     - name: Check if build_branch exists in index content
       uri:
-        url: "https://0.0.0.0:9200/logstash-logscraper"
+        url: "https://127.0.0.1:9200/logstash-logscraper"
         user: "admin"
         password: "admin"
         force_basic_auth: true
@@ -139,7 +143,7 @@
 
     - name: Get indices to fail the test
       uri:
-        url: "https://0.0.0.0:9200/_cat/indices"
+        url: "https://127.0.0.1:9200/_cat/indices"
         user: "admin"
         password: "admin"
         force_basic_auth: true
