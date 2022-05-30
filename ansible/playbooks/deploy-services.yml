@@ -21,6 +21,7 @@
         logscraper_workers: 4
         logsender_workers: 10
         logsender_wait_time: 10
+        skip_debug: true
   roles:
     - logscraper
     - logsender

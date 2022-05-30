@@ -81,6 +81,9 @@ def get_arguments():
     parser.add_argument("--chunk-size", help="The bulk chunk size",
                         type=int,
                         default=1500)
+    parser.add_argument("--skip-debug", help="Skip messages that contain: "
+                        "DEBUG word",
+                        action="store_true")
     parser.add_argument("--keep", help="Do not remove log directory after",
                         action="store_true")
     parser.add_argument("--debug", help="Be more verbose",
@@ -270,13 +273,14 @@ def json_iter(build_file):
         yield (ts, json.dumps(parse_file))
 
 
-def logline_iter(build_file):
+def logline_iter(build_file, skip_debug):
     last_known_timestamp = None
     with open_file(build_file) as f:
         while True:
             line = f.readline()
-            if last_known_timestamp is None and line.startswith(
-                    "-- Logs begin at "):
+            if (last_known_timestamp is None and line.startswith(
+                    "-- Logs begin at ")) or (skip_debug and
+                                              'DEBUG' in line):
                 continue
             if line:
                 ts = get_timestamp(line)
@@ -299,13 +303,15 @@ def doc_iter(inner, index, es_fields, doc_type):
         message = get_message(line)
         if not message:
             continue
+
         fields["message"] = message
 
         doc = {"_index": index, "_type": doc_type, "_source": fields}
         yield doc
 
 
-def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type):
+def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type,
+               skip_debug):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
 
@@ -314,7 +320,8 @@ def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type):
             docs = doc_iter(json_iter(build_file), index, es_fields, doc_type)
             return helpers.bulk(es_client, docs, chunk_size=chunk_size)
 
-        docs = doc_iter(logline_iter(build_file), index, es_fields, doc_type)
+        docs = doc_iter(logline_iter(build_file, skip_debug), index, es_fields,
+                        doc_type)
         return helpers.bulk(es_client, docs, chunk_size=chunk_size)
     except opensearch_exceptions.TransportError as e:
         logging.critical("Can not send message to Opensearch. Error: %s" % e)
@@ -355,7 +362,7 @@ def send(ready_directory, args, directory, index):
         fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, args.chunk_size,
-                                 args.doc_type)
+                                 args.doc_type, args.skip_debug)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)

@@ -272,7 +272,8 @@ class FakeArgs(object):
     def __init__(self, config=None, directory=None, host=None, port=None,
                  username=None, password=None, index_prefix=None, index=None,
                  doc_type=None, insecure=None, follow=None, workers=None,
-                 chunk_size=None, keep=None, debug=None, wait_time=None):
+                 chunk_size=None, skip_debug=None, keep=None, debug=None,
+                 wait_time=None):
 
         self.config = config
         self.directory = directory
@@ -287,6 +288,7 @@ class FakeArgs(object):
         self.follow = follow
         self.workers = workers
         self.chunk_size = chunk_size
+        self.skip_debug = skip_debug
         self.keep = keep
         self.debug = debug
         self.wait_time = wait_time
@@ -334,7 +336,7 @@ class TestSender(base.TestCase):
         self.assertTrue(mock_remove_dir.called)
         mock_send_to_es.assert_called_with(
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
-            'fake_client_object', index, None, '_doc')
+            'fake_client_object', index, None, '_doc', None)
 
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -384,7 +386,7 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='config.yaml'))
+                config='config.yaml', skip_debug=False))
     def test_send_to_es(self, mock_args, mock_text, mock_bulk, mock_doc_iter,
                         mock_logline_chunk, mock_file_info):
         build_file = 'job-result.txt'
@@ -479,7 +481,7 @@ class TestSender(base.TestCase):
         }]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type)
+                             args.chunk_size, args.doc_type, args.skip_debug)
         self.assertEqual(1, mock_bulk.call_count)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -490,7 +492,7 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='test.yaml'))
+                config='test.yaml', skip_debug=False))
     def test_send_to_es_error(self, mock_args, mock_text, mock_bulk,
                               mock_logline, mock_doc_iter, mock_file_info):
         build_file = 'job-result.txt'
@@ -538,7 +540,7 @@ class TestSender(base.TestCase):
         })
         send_status = logsender.send_to_es(build_file, es_fields, es_client,
                                            args.index, args.chunk_size,
-                                           args.doc_type)
+                                           args.doc_type, args.skip_debug)
         self.assertIsNone(send_status)
 
     @mock.patch('json.load')
@@ -548,7 +550,7 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='test.yaml'))
+                config='test.yaml', skip_debug=False))
     def test_send_to_es_json(self, mock_args, mock_text, mock_bulk,
                              mock_file_info, mock_json_load):
         build_file = 'performance.json'
@@ -593,8 +595,58 @@ class TestSender(base.TestCase):
                 }, '_type': 'zuul'
         }
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type)
+                             args.chunk_size, args.doc_type, args.skip_debug)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
+        self.assertEqual(1, mock_bulk.call_count)
+
+    @mock.patch('logscraper.logsender.get_file_info')
+    @mock.patch('logscraper.logsender.doc_iter')
+    @mock.patch('logscraper.logsender.logline_iter')
+    @mock.patch('opensearchpy.helpers.bulk')
+    @mock.patch('logscraper.logsender.open_file')
+    @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
+                directory="/tmp/testdir", index="myindex", workers=1,
+                chunk_size=1000, doc_type="zuul",
+                config='test.yaml', skip_debug=True))
+    def test_send_to_es_skip_debug(self, mock_args, mock_text, mock_bulk,
+                                   mock_logline, mock_doc_iter,
+                                   mock_file_info):
+        build_file = 'job-result.txt'
+        es_fields = parsed_fields
+        es_client = mock.Mock()
+        args = logsender.get_arguments()
+        text = ["2022-02-28 09:39:09.596010 | Job console starting...",
+                "2022-02-28 09:39:09.610160 | DEBUG Updating repositories",
+                "2022-02-28 09:39:09.996235 | DEBUG Preparing job workspace"]
+        mock_text.return_value = io.StringIO("\n".join(text))
+        es_doc = [{
+            '_index': 'myindex',
+            '_source': {
+                '@timestamp': '2022-02-28T09:39:09.596000',
+                'build_branch': 'master',
+                'build_change': 829161,
+                'build_name': 'openstack-tox-py39',
+                'build_newrev': 'UNKNOWN',
+                'build_node': 'zuul-executor',
+                'build_patchset': '3',
+                'build_queue': 'check',
+                'build_ref': 'refs/changes/61/829161/3',
+                'build_set': '52b29e0e716a4436bd20eed47fa396ce',
+                'build_status': 'SUCCESS',
+                'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'log_url':
+                'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
+                'message': ' Job console starting...',
+                'node_provider': 'local',
+                'project': 'openstack/neutron',
+                'tenant': 'openstack',
+                'voting': 1,
+                'zuul_executor': 'ze07.opendev.org'},
+            '_type': 'zuul'}]
+        mock_doc_iter.return_value = es_doc
+        logsender.send_to_es(build_file, es_fields, es_client, args.index,
+                             args.chunk_size, args.doc_type, args.skip_debug)
+        self.assertEqual(es_doc, list(mock_bulk.call_args.args[1]))
         self.assertEqual(1, mock_bulk.call_count)
 
     @mock.patch('logscraper.logsender.logline_iter')
@@ -637,9 +689,10 @@ class TestSender(base.TestCase):
             (datetime.datetime(2022, 2, 28, 9, 39, 9, 996000),
              '2022-02-28 09:39:09.996 | Preparing job workspace')
         ]
+        skip_debug = False
         readed_data = mock.mock_open(read_data=text)
         with mock.patch('builtins.open', readed_data) as mocked_open_file:
-            generated_text = list(logsender.logline_iter('nofile'))
+            generated_text = list(logsender.logline_iter('nofile', skip_debug))
             self.assertEqual(expected_data, generated_text)
             self.assertTrue(mocked_open_file.called)
 

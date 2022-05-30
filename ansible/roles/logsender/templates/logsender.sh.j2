@@ -60,4 +60,7 @@
     {% if 'custom_ca_crt' in item %}
     --ca-file {{ item['custom_ca_crt'] }} \
     {% endif %}
+    {% if 'skip_debug' in item and item['skip_debug'] %}
+    --skip-debug \
+    {% endif %}
     --follow

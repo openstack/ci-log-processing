@@ -27,4 +27,5 @@ container_images:
 #     ignore_es_status: false
 #     logsender_wait_time: 60
 #     custom_ca_crt: ""
+#     skip_debug: false
 tenant_builds: []
