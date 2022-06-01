@@ -61,7 +61,7 @@
     podman run -d --name opensearch \
       --network host \
       -e "discovery.type=single-node" \
-      quay.rdoproject.org/software-factory/opensearch:1.1.0
+      quay.io/software-factory/opensearch:1.1.0
 
 - name: Wait for Opensearch to be up
   wait_for:
@@ -122,7 +122,7 @@
       --network host \
       -v /etc/logstash/conf.d:/usr/share/logstash/pipeline:z \
       -v /etc/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:z \
-      quay.rdoproject.org/software-factory/logstash:7.10.1
+      quay.io/software-factory/logstash:7.10.1
 
 - name: Wait for Logstash to be up
   wait_for:

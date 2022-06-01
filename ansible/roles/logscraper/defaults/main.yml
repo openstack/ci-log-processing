@@ -7,7 +7,7 @@ logscraper_dir: /etc/logscraper
 
 container_images:
   # FIXME: Create new project on Docker hub that will contain that image
-  logscraper: quay.rdoproject.org/software-factory/logscraper:latest
+  logscraper: quay.io/software-factory/logscraper:latest
 
 # Example:
 # tenant_builds:

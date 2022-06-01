@@ -174,7 +174,7 @@ You can do it with command:
      podman run --network host -d --name loggearman-worker-$i \
       --volume /etc/loggearman:/etc/loggearman:z \
       --volume /var/log/loggearman:/var/log/loggearman:z \
-      quay.rdoproject.org/software-factory/loggearman:latest \
+      quay.io/software-factory/loggearman:latest \
       log-gearman-worker -c /etc/loggearman/worker.yml --foreground  -d /var/log/loggearman/worker.log
 
 To remove:
