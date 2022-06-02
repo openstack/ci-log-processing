@@ -660,7 +660,8 @@ def run_scraping(args, zuul_api_url, job_name=None):
     if builds:
         pool = multiprocessing.Pool(int(args.workers))
         try:
-            pool.map(run_build, builds)
+            r = pool.map_async(run_build, builds)
+            r.wait()
         finally:
             config.save()
 
