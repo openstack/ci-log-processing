@@ -89,6 +89,7 @@ def get_arguments():
                         "iteration",
                         type=int,
                         default=120)
+    parser.add_argument("--ca-file", help="Provide custom CA certificate")
     args = parser.parse_args()
     return args
 
@@ -443,6 +444,9 @@ def get_es_client(args):
 
     if args.username and args.password:
         es_creds["http_auth"] = "%s:%s" % (args.username, args.password)
+
+    if args.ca_file:
+        es_creds['ca_certs'] = args.ca_file
 
     es_client = OpenSearch([es_creds], timeout=60)
     logging.info("Connected to Opensearch: %s" % es_client.info())

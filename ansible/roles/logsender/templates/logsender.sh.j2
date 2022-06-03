@@ -9,6 +9,9 @@
     --name logsender-{{ item.tenant }} \
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
     --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
+    {% if 'custom_ca_crt' in item %}
+    --volume {{ custom_ca_crt }}:{{ custom_ca_crt}}:z \
+    {% endif %}
     {{ container_images['logsender'] }} \
     /usr/local/bin/logsender \
     --config {{ logscraper_dir }}/config.yaml \
@@ -53,5 +56,8 @@
     {% endif %}
     {% if 'logsender_wait_time' in item %}
     --wait-time {{ item['logsender_wait_time'] }} \
+    {% endif %}
+    {% if 'custom_ca_crt' in item %}
+    --ca-file {{ custom_ca_crt }} \
     {% endif %}
     --follow

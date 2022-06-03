@@ -29,4 +29,5 @@ container_images:
 #     max_skipped: 100
 #     debug: true
 #     logscraper_wait_time: 120
+#     custom_ca_crt: ""
 tenant_builds: []

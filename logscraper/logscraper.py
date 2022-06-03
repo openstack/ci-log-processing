@@ -149,6 +149,7 @@ def get_arguments():
                         "iteration",
                         type=int,
                         default=120)
+    parser.add_argument("--ca-file", help="Provide custom CA certificate")
     args = parser.parse_args()
     return args
 
@@ -666,10 +667,15 @@ def run_scraping(args, zuul_api_url, job_name=None):
 
 
 def run(args):
+    if args.ca_file:
+        validate_ca = args.ca_file
+    else:
+        validate_ca = args.insecure
+
     for zuul_api_url in args.zuul_api_url:
         if args.job_name:
             jobs_in_zuul = filter_available_jobs(zuul_api_url, args.job_name,
-                                                 args.insecure)
+                                                 validate_ca)
             logging.info("Available jobs for %s are %s" % (
                 zuul_api_url, jobs_in_zuul))
             for job_name in jobs_in_zuul:
