@@ -41,12 +41,15 @@ Created roles:
 * Readonly role is creaded base on the [inscruction](https://opensearch.org/docs/latest/security-plugin/access-control/users-roles/#set-up-a-read-only-user-in-opensearch-dashboards)
 Details:
   name: readonly
-  cluster permissions: cluster_composite_ops_ro
+  cluster permissions: cluster_composite_ops_ro, cluster:monitor/main
   index permissions:
     index: *
     index permissions: read
   tenant permissions:
     tenant: global_tenant
+
+NOTE:
+The `cluster:monitor/main` role is required to use Python Opensearch client.
 
 ### Create role mapping
 
