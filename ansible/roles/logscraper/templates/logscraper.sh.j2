@@ -9,7 +9,7 @@
     --name logscraper-{{ item.tenant }} \
     --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
     {% if 'custom_ca_crt' in item %}
-    --volume {{ custom_ca_crt }}:{{ custom_ca_crt}}:z \
+    --volume {{ item['custom_ca_crt'] }}:{{ item['custom_ca_crt'] }}:z \
     {% endif %}
     {% if 'download_dir' in item %}
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \

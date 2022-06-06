@@ -107,12 +107,14 @@ With this solution, log workflow looks like:
 
 .. code-block:: shell
 
-                                          1. Get last
-                   +----------------+     builds info       +-----------------+
-                   |                | --------------------> |                 |
-                   |   Logscraper   |                       |  Zuul API       |
-                   |                | <-------------------- |                 |
-                   +----------------+    2. Fetch data      +-----------------+
+   +----------------+  1. Get last builds info      +-----------------+
+   |                | ----------------------------> |                 |
+   |   Logscraper   |                               |  Zuul API       |
+   |                | <---------------------------- |                 |
+   +----------------+    2. Fetch data              +-----------------+
+            |
+            +--------------+
+                           |
                            |
    3. Download logs;       |
    include inventory.yaml  |
