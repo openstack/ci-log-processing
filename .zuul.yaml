@@ -16,6 +16,52 @@
         - name: centos-8-stream
           label: centos-8-stream
 
+# Image building jobs
+# NOTE: secret encrypted with opendev/system-config repo
+- secret:
+    name: cilogprocessing-docker
+    data:
+      username: cilogprocessing
+      password: !encrypted/pkcs1-oaep
+        - rFnEOu5DM21qGOjAmQzi+8vuc4QSlY0chLeXhQa95FtJADEt7V2qqL6LZ1jEyPeysQlH2
+          iVLmLPZFOw+KEiOEvosmAiyvW90jvRg5a6RPMPrguik7dnletajrFYjUElSnO/RSD5Yqk
+          UlOqsd0kdOFuTfBKbAjszA3N4JAV2ttvYZynZS4iyoNm1iEBMVd6p/TwocevEgoHI2QuE
+          mXuUFi7y0M24dV15rjHclTMV56Snh6/1fmChhMalbhDguxDs9ghv17oVdJLN2tEihZo2b
+          DLg2SoFv8/TIPI594RMykymU9I3PKC8Nvbn0wKMKidyENvL1aDlc6B7iMV4FHZLZNyg4X
+          jQLk4nUcQh/mPMiCRr7ay9NP/1mHb4MIkP4D83i8n5beqcUWOWvrbxxBbpZDhrtLdWIUH
+          6Me2beTEUi8xE0GMGlkcTWpwJZ+05DdPdzjbUBDpLruvFYpsgHPVbnb+sSW2QxJQqqOmk
+          Tn6CZBKQkLTaCTQ88Wgxe8KqsDRaKrDnF2TmjnXFrJUN0rnxSOYKm+VSJVRIedwN/pZ1W
+          iE1qDnMqGMQcU8bsaG8TiJvzCMdEuVSivz5sYlDSDrt+W+P8W49c1LRvSdnC0ZRVPTYLb
+          zfdSmt73AU65h4wfVT7zCL+AnjqzzCIJQ8klfoUZGZNWuAxJYbVz8RbOu87N6A=
+
+- job:
+    name: cilogprocessing-build-image
+    parent: opendev-build-docker-image
+    description: Build logscraper and loggearman images.
+    allowed-projects: openstack/ci-log-processing
+    timeout: 2700  # 45 minutes
+    requires: python-base-3.9-bullseye-container-image
+    provides: cilogprocessing-container-image
+    vars: &cilogprocessing_image_vars
+      docker_images:
+        - context: .
+          repository: cilogprocessing/logscraper
+        - context: loggearman/
+          repository: cilogprocessing/loggearman
+
+- job:
+    name: cilogprocessing-upload-image
+    parent: opendev-upload-docker-image
+    description: Build Docker images and upload to Docker Hub.
+    allowed-projects: openstack/ci-log-processing
+    requires: python-base-3.9-bullseye-container-image
+    provides: cilogprocessing-container-image
+    secrets:
+      name: docker_credentials
+      secret: cilogprocessing-docker
+      pass-to-parent: true
+    vars: *cilogprocessing_image_vars
+
 - project:
     templates:
       - publish-tox-docs-infra
@@ -25,6 +71,17 @@
         - openstack-tox-linters
         - openstack-tox-pep8
         - openstack-tox-py38
+        - cilogprocessing-build-image
         - ci-log-processing-functional-test-centos-8-stream
         - ci-log-processing-functional-test-centos-8-stream-sender
     gate: *logcheck
+    release:
+      jobs:
+        - cilogprocessing-upload-image:
+            secrets:
+              name: docker_credentials
+              secret: cilogprocessing-docker
+              pass-to-parent: true
+            vars:
+              <<: *cilogprocessing_image_vars
+              upload_docker_image_promote: false
