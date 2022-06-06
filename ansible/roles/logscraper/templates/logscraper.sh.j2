@@ -52,6 +52,6 @@
     --wait-time {{ item['logscraper_wait_time'] }} \
     {% endif %}
     {% if 'custom_ca_crt' in item %}
-    --ca-file {{ custom_ca_crt }} \
+    --ca-file {{ item['custom_ca_crt'] }} \
     {% endif %}
     --follow
