@@ -417,10 +417,10 @@ def prepare_and_send(ready_directories, args):
         sys.exit(1)
 
     with multiprocessing.Pool(processes=args.workers) as pool:
-        pool.starmap(send, zip(
+        pool.starmap_async(send, zip(
             list(ready_directories.items()),
             itertools.repeat(args),
-            itertools.repeat(directory), itertools.repeat(index)))
+            itertools.repeat(directory), itertools.repeat(index))).wait()
 
 
 def setup_logging(debug):

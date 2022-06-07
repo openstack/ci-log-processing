@@ -255,10 +255,11 @@ def _parse_get_yaml(text):
     return yaml.load(text)
 
 
-class _MockedPoolMapResult:
+class _MockedPoolMapAsyncResult:
     def __init__(self, func, iterable):
         self.func = func
         self.iterable = iterable
+        self.wait = mock.Mock()
 
         # mocked results
         self._value = [self.func(i) for i in iterable]
@@ -737,10 +738,10 @@ class TestSender(base.TestCase):
         ready_directories = {'builduuid': ['job-result.txt']}
         mock_index.return_value = args.index
         with mock.patch(
-                'multiprocessing.pool.Pool.starmap',
+                'multiprocessing.pool.Pool.starmap_async',
                 lambda self, func, iterable, chunksize=None,
                 callback=None,
-                error_callback=None: _MockedPoolMapResult(func, iterable),
+                error_callback=None: _MockedPoolMapAsyncResult(func, iterable),
         ):
             logsender.prepare_and_send(ready_directories, args)
             self.assertTrue(mock_send.called)
