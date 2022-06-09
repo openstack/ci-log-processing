@@ -168,7 +168,7 @@ class Config:
             sys.exit(1)
         self.tenant = url_path[-1]
 
-        self.filename = "%s-%s" % (args.checkpoint_file, self.tenant)
+        self.filename = "%s" % args.checkpoint_file
 
         if job_name:
             self.filename = "%s-%s" % (self.filename, job_name)
