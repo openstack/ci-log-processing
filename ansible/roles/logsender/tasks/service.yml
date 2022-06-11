@@ -6,6 +6,13 @@
     mode: '0755'
   register: _start_script
 
+- name: Generate logsender configuration file
+  template:
+    src: config.yaml.j2
+    dest: "{{ logscraper_dir }}/logsender-{{ item.tenant }}.yaml"
+    mode: '0644'
+  register: _config_file
+
 - name: Generate systemd unit
   template:
     src: logsender.service.j2
@@ -19,7 +26,7 @@
     state: restarted
     daemon-reload: true
     enabled: true
-  when: _start_script.changed
+  when: _start_script.changed or _config_file.changed
 
 - name: Ensure that service is running
   service:

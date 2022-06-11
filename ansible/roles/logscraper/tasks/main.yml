@@ -23,14 +23,6 @@
     group: "{{ logscraper_group }}"
     mode: "0755"
 
-- name: Copy logscraper config file
-  template:
-    src: config.yaml.j2
-    dest: "{{ logscraper_dir }}/config.yaml"
-    owner: "{{ logscraper_user }}"
-    group: "{{ logscraper_group }}"
-    mode: "0640"
-
 - name: Ensure container software is installed
   package:
     name: podman

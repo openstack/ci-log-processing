@@ -22,6 +22,7 @@ container_images:
 #     insecure: true
 #     download: true
 #     download_dir: /mnt/logscraper/sometenant
+#     file_list: ""
 #     job_name:
 #       - test
 #       - test_new

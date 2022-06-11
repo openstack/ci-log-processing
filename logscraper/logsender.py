@@ -32,6 +32,14 @@ import shutil
 import sys
 import time
 
+# FIXME: discover why stestr in tox env can not import base lib
+try:
+    from logscraper import get_config_args
+    from logscraper import parse_args
+except ImportError:
+    from logscraper.logscraper import get_config_args
+    from logscraper.logscraper import parse_args
+
 from opensearchpy import exceptions as opensearch_exceptions
 from opensearchpy import helpers
 from opensearchpy import OpenSearch
@@ -44,54 +52,34 @@ from ruamel.yaml import YAML
 def get_arguments():
     parser = argparse.ArgumentParser(description="Check log directories "
                                      "and push to the Opensearch service")
-    parser.add_argument("--config", help="Logscraper config file",
-                        required=True)
+    parser.add_argument("--config", help="Logscraper config file")
+    parser.add_argument("--file-list", help="File list to download")
     parser.add_argument("--directory",
                         help="Directory, where the logs will "
-                        "be stored. Defaults to: /tmp/logscraper",
-                        default="/tmp/logscraper")
-    parser.add_argument("--host",
-                        help="Opensearch host",
-                        default='localhost')
-    parser.add_argument("--port",
-                        help="Opensearch port",
-                        type=int,
-                        default=9200)
-    parser.add_argument("--username",
-                        help="Opensearch username",
-                        default='logstash')
+                        "be stored.")
+    parser.add_argument("--host", help="Opensearch host")
+    parser.add_argument("--port", help="Opensearch port", type=int)
+    parser.add_argument("--username", help="Opensearch username")
     parser.add_argument("--password", help="Opensearch user password")
-    parser.add_argument("--index-prefix", help="Prefix for the index. "
-                        "Defaults to logstash-",
-                        default='logstash-')
-    parser.add_argument("--index",
-                        help="Opensearch index. Defaults to: "
-                        "<index-prefix>-YYYY-DD")
+    parser.add_argument("--index-prefix", help="Prefix for the index.")
+    parser.add_argument("--index", help="Opensearch index")
     parser.add_argument("--doc-type", help="Doc type information that will be"
-                        "send to the Opensearch service",
-                        default="_doc")
-    parser.add_argument("--insecure",
-                        help="Skip validating SSL cert",
+                        "send to the Opensearch service")
+    parser.add_argument("--insecure", help="Skip validating SSL cert",
                         action="store_false")
-    parser.add_argument("--follow", help="Keep sending CI logs",
-                        action="store_true")
+    parser.add_argument("--follow", help="Keep sending CI logs", type=bool,
+                        default=True)
     parser.add_argument("--workers", help="Worker processes for logsender",
-                        type=int,
-                        default=1)
-    parser.add_argument("--chunk-size", help="The bulk chunk size",
-                        type=int,
-                        default=1500)
+                        type=int)
+    parser.add_argument("--chunk-size", help="The bulk chunk size", type=int)
     parser.add_argument("--skip-debug", help="Skip messages that contain: "
-                        "DEBUG word",
-                        action="store_true")
+                        "DEBUG word", type=bool, default=True)
     parser.add_argument("--keep", help="Do not remove log directory after",
-                        action="store_true")
-    parser.add_argument("--debug", help="Be more verbose",
-                        action="store_true")
+                        type=bool)
+    parser.add_argument("--debug", help="Be more verbose", type=bool,
+                        default=False)
     parser.add_argument("--wait-time", help="Pause time for the next "
-                        "iteration",
-                        type=int,
-                        default=120)
+                        "iteration", type=int)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
     args = parser.parse_args()
     return args
@@ -355,7 +343,7 @@ def send(ready_directory, args, directory, index):
 
     for build_file in build_files:
         fields = copy.deepcopy(es_fields)
-        file_name, file_tags = get_file_info(args.config, build_file)
+        file_name, file_tags = get_file_info(args.file_list, build_file)
         fields["filename"] = build_file
         fields["log_url"] = (fields["log_url"] + file_name if fields[
             "log_url"] else file_name)
@@ -469,7 +457,9 @@ def run(args):
 
 
 def main():
-    args = get_arguments()
+    app_args = get_arguments()
+    config_args = get_config_args(app_args.config)
+    args = parse_args(app_args, config_args)
     setup_logging(args.debug)
     while True:
         run(args)

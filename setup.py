@@ -18,5 +18,7 @@ setuptools.setup(
     setup_requires=['pbr'],
     pbr=True,
     include_package_data=True,
-    package_data={'logscraper': ['config.yaml.sample']}
+    package_data={'logscraper': ['download-list.yaml.sample',
+                                 'logscraper.yaml.sample',
+                                 'logsender.yaml.sample']}
 )

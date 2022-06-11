@@ -273,7 +273,7 @@ class FakeArgs(object):
                  username=None, password=None, index_prefix=None, index=None,
                  doc_type=None, insecure=None, follow=None, workers=None,
                  chunk_size=None, skip_debug=None, keep=None, debug=None,
-                 wait_time=None):
+                 wait_time=None, file_list=None):
 
         self.config = config
         self.directory = directory
@@ -292,6 +292,7 @@ class FakeArgs(object):
         self.keep = keep
         self.debug = debug
         self.wait_time = wait_time
+        self.file_list = file_list
 
 
 class TestSender(base.TestCase):

@@ -15,6 +15,24 @@
     mode: '0755'
   register: _start_script
 
+- name: Generate logscraper download file list
+  template:
+    src: config.yaml.j2
+    dest: "{{ logscraper_dir }}/logscraper-{{ item.tenant }}.yaml"
+    owner: "{{ logscraper_user }}"
+    group: "{{ logscraper_group }}"
+    mode: '0644'
+  register: _config_file
+
+- name: Copy logscraper config file
+  template:
+    src: download-list.yaml.j2
+    dest: "{{ logscraper_dir }}/download-list-{{ item.tenant }}.yaml"
+    owner: "{{ logscraper_user }}"
+    group: "{{ logscraper_group }}"
+    mode: "0640"
+  register: _download_file
+
 - name: Generate systemd unit
   template:
     src: logscraper.service.j2
@@ -24,7 +42,7 @@
 
 - name: Set empty logscraper checkpoint file
   file:
-    path: "{{ item.checkpoint_file | default(logscraper_dir + '/checkpoint') }}"
+    path: "{{ item.checkpoint_file | default(logscraper_dir + '/checkpoint-' + item.tenant) }}"
     state: touch
     owner: "{{ logscraper_user }}"
     group: "{{ logscraper_group }}"
@@ -36,7 +54,7 @@
     state: restarted
     daemon-reload: true
     enabled: true
-  when: _start_script.changed
+  when: _start_script.changed or _config_file.changed or _download_file.changed
 
 - name: Ensure that service is running
   service:

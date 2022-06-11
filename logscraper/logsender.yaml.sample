@@ -1,0 +1,18 @@
+---
+directory: /tmp/logscraper
+host: localhost
+port: 9200
+username: logstash
+password: ""
+index_prefix: "logstash-"
+index: ""
+doc_type: "_doc"
+chunk_size: 1500
+skip_debug: true
+keep: false
+debug: false
+wait_time: 120
+insecure: false
+ca_file: ""
+follow: true
+workers: 1

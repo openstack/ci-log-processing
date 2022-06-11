@@ -216,7 +216,7 @@ To download logs:
     --checkpoint-file /tmp/results-checkpoint \
     --worker 8 \
     --max-skipped 100 \
-    --download \
+    --download True \
     --directory /tmp/logscraper
 
 This operation took: 30 seconds and it uses 130 MB of RAM.
