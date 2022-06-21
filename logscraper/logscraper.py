@@ -75,6 +75,8 @@ import yaml
 
 from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion as s_version
+from prometheus_client import Gauge
+from prometheus_client import start_http_server
 import tenacity
 from urllib.parse import urljoin
 
@@ -139,6 +141,10 @@ def get_arguments():
     parser.add_argument("--wait-time", help="Pause time for the next "
                         "iteration", type=int)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
+    parser.add_argument("--monitoring-port", help="Expose an Prometheus "
+                        "exporter to collect monitoring metrics."
+                        "NOTE: When no port set, monitoring will be disabled.",
+                        type=int)
     args = parser.parse_args()
     return args
 
@@ -260,6 +266,18 @@ class BuildCache:
 
     def contains(self, uid):
         return uid in self.builds
+
+
+class Monitoring:
+    def __init__(self):
+        self.job_count = Gauge('logscraper_job_count',
+                               'Number of jobs processed by logscraper',
+                               ['job_name'])
+
+    def parse_metrics(self, builds):
+        self.job_count.labels('summary').inc(len(builds))
+        for build in builds:
+            self.job_count.labels(build['job_name']).inc()
 
 
 ###############################################################################
@@ -650,7 +668,7 @@ def check_connection(logstash_url):
         return s.connect_ex((host, port)) == 0
 
 
-def run_scraping(args, zuul_api_url, job_name=None):
+def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
     """Get latest job results and push them into log processing service.
 
     On the end, write build_cache file, so in the future
@@ -684,8 +702,11 @@ def run_scraping(args, zuul_api_url, job_name=None):
         finally:
             config.save()
 
+    if monitoring:
+        monitoring.parse_metrics(builds)
 
-def run(args):
+
+def run(args, monitoring):
     if args.ca_file:
         validate_ca = args.ca_file
     else:
@@ -700,10 +721,10 @@ def run(args):
             for job_name in jobs_in_zuul:
                 logging.info("Starting checking logs for job %s in %s" % (
                     job_name, zuul_api_url))
-                run_scraping(args, zuul_api_url, job_name)
+                run_scraping(args, zuul_api_url, job_name, monitoring)
         else:
             logging.info("Starting checking logs for %s" % zuul_api_url)
-            run_scraping(args, zuul_api_url)
+            run_scraping(args, zuul_api_url, monitoring=monitoring)
 
 
 def main():
@@ -712,12 +733,19 @@ def main():
     args = parse_args(app_args, config_args)
 
     setup_logging(args.debug)
+
+    monitoring = None
+    if args.monitoring_port:
+        monitoring = Monitoring()
+        start_http_server(args.monitoring_port)
+
     if args.download and args.gearman_server and args.gearman_port:
         logging.critical("Can not use logscraper to send logs to gearman "
                          "and download logs. Choose one")
         sys.exit(1)
     while True:
-        run(args)
+        run(args, monitoring)
+
         if not args.follow:
             break
         time.sleep(args.wait_time)

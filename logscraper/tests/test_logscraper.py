@@ -150,7 +150,7 @@ class FakeArgs(object):
                  logstash_url=None, workers=None, max_skipped=None,
                  job_name=None, download=None, directory=None,
                  config=None, wait_time=None, ca_file=None,
-                 file_list=None):
+                 file_list=None, monitoring_port=None):
 
         self.zuul_api_url = zuul_api_url
         self.gearman_server = gearman_server
@@ -169,6 +169,7 @@ class FakeArgs(object):
         self.wait_time = wait_time
         self.ca_file = ca_file
         self.file_list = file_list
+        self.monitoring_port = monitoring_port
 
 
 class TestScraper(base.TestCase):
@@ -215,10 +216,11 @@ class TestScraper(base.TestCase):
             'http://somehost.com/api/tenant/tenant1', job_names, False)
         self.assertEqual(['openstack-tox-py38'], result)
 
+    @mock.patch('logscraper.logscraper.Monitoring')
     @mock.patch('logscraper.logscraper.filter_available_jobs',
                 side_effect=[['testjob1', 'testjob2'], [], []])
     @mock.patch('logscraper.logscraper.run_scraping')
-    def test_run_with_jobs(self, mock_scraping, mock_jobs):
+    def test_run_with_jobs(self, mock_scraping, mock_jobs, mock_monitoring):
         # when multiple job name provied, its iterate on zuul jobs
         # if such job is available.
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
@@ -229,7 +231,7 @@ class TestScraper(base.TestCase):
                 gearman_server='localhost',
                 job_name=['testjob1', 'testjob2'])
             args = logscraper.get_arguments()
-            logscraper.run(args)
+            logscraper.run(args, mock_monitoring)
             self.assertEqual(2, mock_scraping.call_count)
 
     @mock.patch('socket.socket')
@@ -315,8 +317,9 @@ class TestScraper(base.TestCase):
                                  mock_specified_files.call_args.args[0])
                 self.assertFalse(mock_save_buildinfo.called)
 
+    @mock.patch('logscraper.logscraper.Monitoring')
     @mock.patch('logscraper.logscraper.run_scraping')
-    def test_run(self, mock_scraping):
+    def test_run(self, mock_scraping, mock_monitoring):
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
                 zuul_api_url=['http://somehost.com/api/tenant/tenant1',
@@ -324,7 +327,7 @@ class TestScraper(base.TestCase):
                               'http://somehost.com/api/tenant/tenant3'],
                 gearman_server='localhost')
             args = logscraper.get_arguments()
-            logscraper.run(args)
+            logscraper.run(args, mock_monitoring)
             self.assertEqual(3, mock_scraping.call_count)
 
     @mock.patch('logscraper.logscraper.load_config')
@@ -356,6 +359,45 @@ class TestScraper(base.TestCase):
                 logscraper.run_scraping(
                     args, 'http://somehost.com/api/tenant/tenant1')
 
+            self.assertFalse(mock_submit.called)
+            self.assertTrue(mock_specified_files.called)
+            self.assertEqual(builds_result[0],
+                             mock_specified_files.call_args.args[0])
+            self.assertTrue(mock_save_buildinfo.called)
+
+    @mock.patch('logscraper.logscraper.load_config')
+    @mock.patch('logscraper.logscraper.save_build_info')
+    @mock.patch('logscraper.logscraper.check_specified_files')
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    @mock.patch('os.path.isfile')
+    @mock.patch('logscraper.logscraper.check_specified_files',
+                return_value=['job-output.txt'])
+    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
+    @mock.patch('argparse.ArgumentParser.parse_args',
+                return_value=FakeArgs(
+                    zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
+                    workers=1, download=True, directory="/tmp/testdir"))
+    def test_run_scraping_monitoring(self, mock_args, mock_submit, mock_files,
+                                     mock_isfile, mock_readfile,
+                                     mock_specified_files, mock_save_buildinfo,
+                                     mock_config):
+        with mock.patch('logscraper.logscraper.get_last_job_results'
+                        ) as mock_job_results:
+            with mock.patch(
+                    'multiprocessing.pool.Pool.map_async',
+                    lambda self, func, iterable, chunksize=None, callback=None,
+                    error_callback=None: _MockedPoolMapAsyncResult(
+                        func, iterable),
+            ):
+                args = logscraper.get_arguments()
+                mock_job_results.return_value = [builds_result[0]]
+                monitoring = logscraper.Monitoring()
+                logscraper.run_scraping(
+                    args, 'http://somehost.com/api/tenant/tenant1',
+                    monitoring=monitoring)
+
+            self.assertEqual('job_name', monitoring.job_count._labelnames[0])
+            self.assertEqual(2, len(monitoring.job_count._metrics))
             self.assertFalse(mock_submit.called)
             self.assertTrue(mock_specified_files.called)
             self.assertEqual(builds_result[0],

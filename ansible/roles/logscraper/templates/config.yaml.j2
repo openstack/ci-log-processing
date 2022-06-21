@@ -11,6 +11,7 @@ directory: {{ item['download_dir'] | default('/tmp/logscraper') }}
 wait_time: {{ item['logscraper_wait_time'] | default(120) }}
 insecure: {{ item['insecure'] | default(false) }}
 ca_file: {{ item['custom_ca_crt'] | default('') }}
+monitoring_port: {{ item['monitoring_port'] | default('') }}
 #deprecated
 gearman_server: {{ item['gearman_server'] | default('') }}
 gearman_port: {{ item['gearman_port'] | default(4730) }}

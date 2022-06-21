@@ -23,6 +23,7 @@
         logsender_wait_time: 10
         skip_debug: true
         performance_index_prefix: "performance-"
+        monitoring_port: 9128
   roles:
     - logscraper
     - logsender
@@ -41,6 +42,13 @@
     - name: Expose Prometheus node exporter metrics for softwarefactory-project.io
       firewalld:
         rich_rule: 'rule family=ipv4 source address=38.102.83.250/32 port port=9100 protocol=tcp accept'
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Expose Prometheus Logscraper exporter metrics for softwarefactory-project.io
+      firewalld:
+        rich_rule: 'rule family=ipv4 source address=38.102.83.250/32 port port=9128 protocol=tcp accept'
         state: enabled
         permanent: true
         immediate: true

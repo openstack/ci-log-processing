@@ -12,6 +12,7 @@ directory: /tmp/logscraper
 wait_time: 120
 insecure: false
 ca_file: ""
+monitoring_port: 9128
 #deprecated
 gearman_server: ""
 gearman_port: 4730
