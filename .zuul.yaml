@@ -23,25 +23,23 @@
     data:
       username: cilogprocessing
       password: !encrypted/pkcs1-oaep
-        - rFnEOu5DM21qGOjAmQzi+8vuc4QSlY0chLeXhQa95FtJADEt7V2qqL6LZ1jEyPeysQlH2
-          iVLmLPZFOw+KEiOEvosmAiyvW90jvRg5a6RPMPrguik7dnletajrFYjUElSnO/RSD5Yqk
-          UlOqsd0kdOFuTfBKbAjszA3N4JAV2ttvYZynZS4iyoNm1iEBMVd6p/TwocevEgoHI2QuE
-          mXuUFi7y0M24dV15rjHclTMV56Snh6/1fmChhMalbhDguxDs9ghv17oVdJLN2tEihZo2b
-          DLg2SoFv8/TIPI594RMykymU9I3PKC8Nvbn0wKMKidyENvL1aDlc6B7iMV4FHZLZNyg4X
-          jQLk4nUcQh/mPMiCRr7ay9NP/1mHb4MIkP4D83i8n5beqcUWOWvrbxxBbpZDhrtLdWIUH
-          6Me2beTEUi8xE0GMGlkcTWpwJZ+05DdPdzjbUBDpLruvFYpsgHPVbnb+sSW2QxJQqqOmk
-          Tn6CZBKQkLTaCTQ88Wgxe8KqsDRaKrDnF2TmjnXFrJUN0rnxSOYKm+VSJVRIedwN/pZ1W
-          iE1qDnMqGMQcU8bsaG8TiJvzCMdEuVSivz5sYlDSDrt+W+P8W49c1LRvSdnC0ZRVPTYLb
-          zfdSmt73AU65h4wfVT7zCL+AnjqzzCIJQ8klfoUZGZNWuAxJYbVz8RbOu87N6A=
+        - HYNNwWxpT2hWhKOb2Mc1jziFEhHl7X7CKq1BR+ep8U81n80VLYfhhsGQNIVRUUOSWwLSy
+          zTOyInPdYRYy0sAW1wRllFttdQGulzmgb26R01sjz34/OSttbd2BHKRGCZM8bY7zkWVLN
+          ACPOcm12eTceBgGNKYJ/TT17Jub5iwp6lPgtLWbT92QbLBVWbxexZEfT0X95GsRz8S5uo
+          jXCpKbzNlDnyOCGkMDWpSKPa3K+r+stkmO7+cMPKIf9nhEB+gblTCfXJysa6hfqx/sEaj
+          ovQR6btu1VljorG5VQG47jL2d/AJGQj6B0ibd053+mdjljg5DWoUYOpxdhzvxAZJsvozA
+          NYCD0jKsPjEBZf/Lx3QPizLhl/iZUPGQUQgw2Y94ck7R2trcj7y8J4qHiXD2bOrUUmeZv
+          31A56Rhx/nWIcP8BD0km9KUBVk/TleG32Bsbz74gvf4yIJ4vpJS/wqyK3v5kuoguym0Nx
+          aQRH0L1NZfN4uOQQPuh1tytsnoipl4a5sRgE7X3rZwAI+cX+WaEc613/CvA48lDgSH5SO
+          UzGbtzHV3q4RuIiHkdxpwFYzF6vrPBx04UVBnG4uR8nqyK6dP+g5SYIYXNrUHwmkYwM6X
+          csDScfIz7yBkms1OOomcb7tqm87R9NHqf8M13SsA3xqTDk+j2yvY634UmSTbuM=
 
 - job:
-    name: cilogprocessing-build-image
+    name: ci-log-processing-build-image
     parent: opendev-build-docker-image
     description: Build logscraper and loggearman images.
     allowed-projects: openstack/ci-log-processing
-    timeout: 2700  # 45 minutes
-    requires: python-base-3.9-bullseye-container-image
-    provides: cilogprocessing-container-image
+    timeout: 2700
     vars: &cilogprocessing_image_vars
       docker_images:
         - context: .
@@ -50,38 +48,43 @@
           repository: cilogprocessing/loggearman
 
 - job:
-    name: cilogprocessing-upload-image
+    name: ci-log-processing-upload-image
     parent: opendev-upload-docker-image
     description: Build Docker images and upload to Docker Hub.
     allowed-projects: openstack/ci-log-processing
-    requires: python-base-3.9-bullseye-container-image
-    provides: cilogprocessing-container-image
     secrets:
       name: docker_credentials
       secret: cilogprocessing-docker
       pass-to-parent: true
     vars: *cilogprocessing_image_vars
+    dependencies:
+      - name: openstack-tox-pep8
+        soft: true
+      - name: openstack-tox-py38
+        soft: true
+      - name: ci-log-processing-functional-test-centos-8-stream
+        soft: true
+      - name: ci-log-processing-functional-test-centos-8-stream-sender
+        soft: true
 
 - project:
     templates:
       - publish-tox-docs-infra
       - publish-to-pypi-quietly
-    check: &logcheck
+    check:
       jobs:
         - openstack-tox-linters
         - openstack-tox-pep8
         - openstack-tox-py38
-        - cilogprocessing-build-image
+        - ci-log-processing-build-image
         - ci-log-processing-functional-test-centos-8-stream
         - ci-log-processing-functional-test-centos-8-stream-sender
-    gate: *logcheck
-    release:
+    gate:
       jobs:
-        - cilogprocessing-upload-image:
-            secrets:
-              name: docker_credentials
-              secret: cilogprocessing-docker
-              pass-to-parent: true
-            vars:
-              <<: *cilogprocessing_image_vars
-              upload_docker_image_promote: false
+        - openstack-tox-linters
+        - openstack-tox-pep8
+        - openstack-tox-py38
+        - ci-log-processing-functional-test-centos-8-stream
+        - ci-log-processing-functional-test-centos-8-stream-sender
+        - ci-log-processing-build-image
+        - ci-log-processing-upload-image
