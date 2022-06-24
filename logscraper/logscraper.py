@@ -397,6 +397,9 @@ def get_builds(zuul_url, insecure, job_name):
         logging.info("Getting job results %s", url)
         jobs_result = requests_get_json(url, verify=insecure)
 
+        if not jobs_result:
+            return iter([])
+
         for job in jobs_result:
             # It is important here to check we didn't yield builds twice,
             # as this can happen when using skip if new build get reported
