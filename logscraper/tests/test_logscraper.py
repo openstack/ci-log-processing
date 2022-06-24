@@ -149,7 +149,8 @@ class FakeArgs(object):
                  checkpoint_file=None, ignore_checkpoint=None,
                  logstash_url=None, workers=None, max_skipped=None,
                  job_name=None, download=None, directory=None,
-                 config=None, wait_time=None, ca_file=None):
+                 config=None, wait_time=None, ca_file=None,
+                 file_list=None):
 
         self.zuul_api_url = zuul_api_url
         self.gearman_server = gearman_server
@@ -167,6 +168,7 @@ class FakeArgs(object):
         self.config = config
         self.wait_time = wait_time
         self.ca_file = ca_file
+        self.file_list = file_list
 
 
 class TestScraper(base.TestCase):

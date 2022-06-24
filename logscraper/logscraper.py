@@ -106,22 +106,17 @@ def requests_get_json(url, verify=True):
 def get_arguments():
     parser = argparse.ArgumentParser(description="Fetch and push last Zuul "
                                      "CI job logs into gearman.")
-    parser.add_argument("--config", help="Logscraper config file",
-                        required=True)
+    parser.add_argument("--config", help="Logscraper config file")
+    parser.add_argument("--file-list", help="File list to download")
     parser.add_argument("--zuul-api-url", help="URL(s) for Zuul API. Parameter"
-                        " can be set multiple times.",
-                        required=True,
-                        action='append')
+                        " can be set multiple times.", action='append')
     parser.add_argument("--job-name", help="CI job name(s). Parameter can be "
                         "set multiple times. If not set it would scrape "
-                        "every latest builds.",
-                        action='append')
+                        "every latest builds.", action='append')
     parser.add_argument("--gearman-server", help="Gearman host addresss")
-    parser.add_argument("--gearman-port", help="Gearman listen port. "
-                        "Defaults to 4730.",
-                        default=4730)
-    parser.add_argument("--follow", help="Keep polling zuul builds",
-                        action="store_true")
+    parser.add_argument("--gearman-port", help="Gearman listen port.")
+    parser.add_argument("--follow", help="Keep polling zuul builds", type=bool,
+                        default=True)
     parser.add_argument("--insecure", help="Skip validating SSL cert",
                         action="store_false")
     parser.add_argument("--checkpoint-file", help="File that will keep "
@@ -131,27 +126,45 @@ def get_arguments():
                         "to log processing system. For example: "
                         "logstash.local:9999")
     parser.add_argument("--workers", help="Worker processes for logscraper",
-                        type=int,
-                        default=1)
+                        type=int)
     parser.add_argument("--max-skipped", help="How many job results should be "
                         "checked until last uuid written in checkpoint file "
-                        "is founded",
-                        default=1000)
-    parser.add_argument("--debug", help="Print more information",
-                        action="store_true")
+                        "is founded")
+    parser.add_argument("--debug", help="Print more information", type=bool,
+                        default=False)
     parser.add_argument("--download", help="Download logs and do not send "
-                        "to gearman service",
-                        action="store_true")
+                        "to gearman service")
     parser.add_argument("--directory", help="Directory, where the logs will "
-                        "be stored. Defaults to: /tmp/logscraper",
-                        default="/tmp/logscraper")
+                        "be stored.")
     parser.add_argument("--wait-time", help="Pause time for the next "
-                        "iteration",
-                        type=int,
-                        default=120)
+                        "iteration", type=int)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
     args = parser.parse_args()
     return args
+
+
+def get_config_args(config_path):
+    config_file = load_config(config_path)
+    if config_file:
+        return config_file
+
+
+def parse_args(app_args, config_args):
+    if not config_args:
+        logging.warning("Can not get informations from config files")
+
+    # NOTE: When insecure flag is set as an argument, the value is False,
+    # so if insecure is set to True in config file, it should also be False.
+    if not getattr(app_args, 'insecure') or (
+            'insecure' in config_args and config_args['insecure']):
+        setattr(app_args, 'insecure', False)
+
+    for k, v in config_args.items():
+        # Arguments provided via CLI should have higher priority than
+        # provided in config.
+        if getattr(app_args, k, None) is None:
+            setattr(app_args, k, v)
+    return app_args
 
 
 ###############################################################################
@@ -174,7 +187,7 @@ class Config:
             self.filename = "%s-%s" % (self.filename, job_name)
 
         self.build_cache = BuildCache(self.filename)
-        self.config_file = load_config(args.config)
+        self.config_file = load_config(args.file_list)
 
     def save(self):
         try:
@@ -436,6 +449,8 @@ def load_config(config_path):
             return yaml.safe_load(f)
     except PermissionError:
         logging.critical("Can not open config file %s" % config_path)
+    except FileNotFoundError:
+        logging.critical("Can not find provided config file! %s" % config_path)
     except Exception as e:
         logging.critical("Exception occured on reading config file %s" % e)
 
@@ -689,7 +704,10 @@ def run(args):
 
 
 def main():
-    args = get_arguments()
+    app_args = get_arguments()
+    config_args = get_config_args(app_args.config)
+    args = parse_args(app_args, config_args)
+
     setup_logging(args.debug)
     if args.download and args.gearman_server and args.gearman_port:
         logging.critical("Can not use logscraper to send logs to gearman "

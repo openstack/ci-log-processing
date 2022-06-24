@@ -1,0 +1,20 @@
+---
+host: {{ item['es_host'] | default('localhost') }}
+port: {{ item['es_port'] | default(9200) }}
+username: {{ item['es_username'] | default('logstash') }}
+password: "{{ item['es_password'] | default('') }}"
+index: {{ item['es_index'] | default('') }}
+index_prefix: {{ item['es_index_prefix'] | default('logstash-') }}
+doc_type: {{ item['doc_type'] | default('_doc') }}
+chunk_size: {{ item['chunk_size'] | default(1500) }}
+skip_debug: {{ item['skip_debug'] | default(true) }}
+keep: {{ item['keep'] | default(false) }}
+debug: {{ item['debug'] | default(false) }}
+wait_time: {{ item['logsender_wait_time'] | default(120) }}
+insecure: {{ item['es_insecure'] | default(false) }}
+ca_file: {{ item['custom_ca_crt'] | default('') }}
+follow: {{ item['follow'] | default(true) }}
+workers: {{ item['logsender_workers'] | default(1) }}
+ignore_es_status: {{ item['ignore_es_status'] | default(false) }}
+directory: {{ item['download_dir'] | default('/tmp/logscraper') }}
+file_list: {{ logscraper_dir }}/download-list-{{ item['tenant'] }}.yaml

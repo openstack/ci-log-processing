@@ -1,0 +1,18 @@
+---
+# logscraper
+zuul_api_url: ['https://zuul.opendev.org/api/tenant/openstack']
+job_name: []
+follow: true
+checkpoint_file: /tmp/logscraper-checkpoint
+workers: 1
+max_skipped: 1000
+debug: false
+download: true
+directory: /tmp/logscraper
+wait_time: 120
+insecure: false
+ca_file: ""
+#deprecated
+gearman_server: ""
+gearman_port: 4730
+logstash_url: ""
