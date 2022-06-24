@@ -8,6 +8,7 @@ workers: 1
 max_skipped: 1000
 debug: false
 download: true
+file_list: logscraper/download-list.yaml.sample
 directory: /tmp/logscraper
 wait_time: 120
 insecure: false
