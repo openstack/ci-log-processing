@@ -88,3 +88,13 @@
         - ci-log-processing-functional-test-centos-8-stream-sender
         - ci-log-processing-build-image
         - ci-log-processing-upload-image
+    release:
+      jobs:
+        - upload-docker-image:
+            secrets:
+              name: docker_credentials
+              secret: cilogprocessing-docker
+              pass-to-parent: true
+            vars:
+              <<: *cilogprocessing_image_vars
+              upload_docker_image_promote: false
