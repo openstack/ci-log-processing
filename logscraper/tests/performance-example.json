@@ -1,0 +1,283 @@
+{
+    "services": [
+        {
+            "service": "devstack@s-object.service",
+            "MemoryCurrent": 64589824
+        },
+        {
+            "service": "devstack@keystone.service",
+            "MemoryCurrent": 260157440
+        },
+        {
+            "service": "devstack@q-ovn-metadata-agent.service",
+            "MemoryCurrent": 222007296
+        },
+        {
+            "service": "devstack@n-super-cond.service",
+            "MemoryCurrent": 162463744
+        },
+        {
+            "service": "devstack@c-vol.service",
+            "MemoryCurrent": 150151168
+        },
+        {
+            "service": "devstack@n-api-meta.service",
+            "MemoryCurrent": 223076352
+        },
+        {
+            "service": "devstack@c-bak.service",
+            "MemoryCurrent": 135827456
+        },
+        {
+            "service": "devstack@n-novnc-cell1.service",
+            "MemoryCurrent": 110931968
+        },
+        {
+            "service": "devstack@n-api.service",
+            "MemoryCurrent": 261332992
+        },
+        {
+            "service": "devstack@memory_tracker.service",
+            "MemoryCurrent": 5562368
+        },
+        {
+            "service": "devstack@etcd.service",
+            "MemoryCurrent": 80420864
+        },
+        {
+            "service": "devstack@q-svc.service",
+            "MemoryCurrent": 422805504
+        },
+        {
+            "service": "devstack@s-container-sync.service",
+            "MemoryCurrent": 45375488
+        },
+        {
+            "service": "devstack@g-api.service",
+            "MemoryCurrent": 241049600
+        },
+        {
+            "service": "devstack@s-proxy.service",
+            "MemoryCurrent": 81174528
+        },
+        {
+            "service": "devstack@s-account.service",
+            "MemoryCurrent": 62246912
+        },
+        {
+            "service": "devstack@c-sch.service",
+            "MemoryCurrent": 112668672
+        },
+        {
+            "service": "devstack@n-sch.service",
+            "MemoryCurrent": 162050048
+        },
+        {
+            "service": "devstack@s-container.service",
+            "MemoryCurrent": 64376832
+        },
+        {
+            "service": "devstack@c-api.service",
+            "MemoryCurrent": 256569344
+        },
+        {
+            "service": "devstack@n-cpu.service",
+            "MemoryCurrent": 138313728
+        },
+        {
+            "service": "devstack@placement-api.service",
+            "MemoryCurrent": 166539264
+        },
+        {
+            "service": "devstack@n-cond-cell1.service",
+            "MemoryCurrent": 171405312
+        }
+    ],
+    "db": [
+        {
+            "db": "placement",
+            "op": "SELECT",
+            "count": 4
+        },
+        {
+            "db": "nova_cell0",
+            "op": "UPDATE",
+            "count": 12
+        },
+        {
+            "db": "nova_cell0",
+            "op": "SELECT",
+            "count": 33
+        },
+        {
+            "db": "neutron",
+            "op": "UPDATE",
+            "count": 1
+        },
+        {
+            "db": "neutron",
+            "op": "DELETE",
+            "count": 1
+        },
+        {
+            "db": "neutron",
+            "op": "SELECT",
+            "count": 10
+        },
+        {
+            "db": "nova_cell1",
+            "op": "SELECT",
+            "count": 32
+        },
+        {
+            "db": "cinder",
+            "op": "DELETE",
+            "count": 1
+        },
+        {
+            "db": "keystone",
+            "op": "SELECT",
+            "count": 59
+        },
+        {
+            "db": "nova_cell1",
+            "op": "UPDATE",
+            "count": 12
+        },
+        {
+            "db": "cinder",
+            "op": "INSERT",
+            "count": 1
+        },
+        {
+            "db": "cinder",
+            "op": "UPDATE",
+            "count": 7
+        },
+        {
+            "db": "cinder",
+            "op": "SELECT",
+            "count": 52
+        }
+    ],
+    "processes": [
+        {
+            "cmd": "/usr/lib/erlang/erts-10.6.4/bin/beam.smp",
+            "pid": 34343,
+            "args": "-W w -A 128 -MBas ageffcbf -MHas ageffcbf",
+            "rss": 86900736
+        },
+        {
+            "cmd": "/usr/sbin/mysqld",
+            "pid": 62703,
+            "args": "",
+            "rss": 739282944
+        },
+        {
+            "cmd": "/opt/stack/bin/etcd",
+            "pid": 63704,
+            "args": "--name ubuntu-focal-ovh-gra1-0029678038",
+            "rss": 19349504
+        },
+        {
+            "cmd": "/usr/local/bin/privsep-helper",
+            "pid": 91395,
+            "args": "--config-file /etc/neutron/neutron_ovn_metadata_agent.ini",
+            "rss": 82690048
+        }
+    ],
+    "api": [
+        {
+            "service": "identity",
+            "log": "tls-proxy_access.log",
+            "largest": 3402,
+            "GET": 1173,
+            "POST": 283
+        },
+        {
+            "service": "info",
+            "log": "tls-proxy_access.log",
+            "largest": 1659,
+            "GET": 4
+        },
+        {
+            "service": "placement",
+            "log": "tls-proxy_access.log",
+            "largest": 1315,
+            "GET": 9,
+            "POST": 1,
+            "PUT": 2
+        },
+        {
+            "service": "v2.0",
+            "log": "tls-proxy_access.log",
+            "largest": 10862,
+            "GET": 19,
+            "POST": 9,
+            "PUT": 3
+        },
+        {
+            "service": "compute",
+            "log": "tls-proxy_access.log",
+            "largest": 2146,
+            "GET": 16,
+            "POST": 20
+        },
+        {
+            "service": "volume",
+            "log": "tls-proxy_access.log",
+            "largest": 390,
+            "GET": 2,
+            "POST": 2
+        },
+        {
+            "service": "image",
+            "log": "tls-proxy_access.log",
+            "largest": 1235,
+            "GET": 2,
+            "POST": 1
+        },
+        {
+            "service": "identity",
+            "log": "access.log",
+            "largest": 3856,
+            "GET": 1174,
+            "POST": 283,
+            "PUT": 34
+        },
+        {
+            "service": "compute",
+            "log": "access.log",
+            "largest": 2568,
+            "GET": 17,
+            "POST": 20
+        },
+        {
+            "service": "placement",
+            "log": "access.log",
+            "largest": 1609,
+            "GET": 9,
+            "POST": 1,
+            "PUT": 2
+        },
+        {
+            "service": "volume",
+            "log": "access.log",
+            "largest": 758,
+            "GET": 2,
+            "POST": 2
+        },
+        {
+            "service": "image",
+            "log": "access.log",
+            "largest": 1410,
+            "GET": 2,
+            "POST": 1,
+            "PUT": 1
+        }
+    ],
+    "report": {
+        "timestamp": "2022-05-17T22:49:50.871392",
+        "hostname": "ubuntu-focal-ovh-gra1-0029678038"
+    }
+}

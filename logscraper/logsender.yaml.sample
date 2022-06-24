@@ -16,3 +16,4 @@ insecure: false
 ca_file: ""
 follow: true
 workers: 1
+performance_index_prefix: ""
