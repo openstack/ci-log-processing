@@ -91,7 +91,7 @@ def get_arguments():
 def _is_file_not_empty(file_path):
     """Return True when buildinfo file is not empty"""
     # NOTE: we can assume, that when file exists, all
-    # content have been dowloaded to the directory.
+    # content have been downloaded to the directory.
     return os.path.getsize(file_path) > 0
 
 
@@ -139,7 +139,7 @@ def get_ready_directories(directory):
             log_files[build_uuid] = files
         else:
             logging.info("Skipping build with uuid %s. Probably all files "
-                         "are not dowloaded yet." % build_uuid)
+                         "are not downloaded yet." % build_uuid)
             continue
 
     return log_files
@@ -314,7 +314,7 @@ def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type,
     except opensearch_exceptions.TransportError as e:
         logging.critical("Can not send message to Opensearch. Error: %s" % e)
     except Exception as e:
-        logging.critical("An error occured on sending message to "
+        logging.critical("An error occurred on sending message to "
                          "Opensearch %s" % e)
 
 

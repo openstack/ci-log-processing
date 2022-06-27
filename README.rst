@@ -113,21 +113,24 @@ With this solution, log workflow looks like:
    |                | <---------------------------- |                 |
    +----------------+    2. Fetch data              +-----------------+
             |
-            +--------------+
-                           |
-                           |
-   3. Download logs;       |
-   include inventory.yaml  |
-   and build info          v
-                   +----------------+
-                   |                |
-                   |   Logsender    |
-                   |                |
-                   +----------------+
+            +------------------------------------------------+
+                                                             |
+                                     3. Download logs;       |
+                                     include inventory.yaml  |
+                                     and build info          |
+                                                             |
+                                                             V
+                   +----------------+               +----------------+
+                   |                |               |                |
+                   |   Logsender    | <------------ |  Download dir  |
+                   |                |               |                |
+                   +----------------+               +----------------+
                            |
     4. Parse log files;    |
     add required fields;   |
-    send to Opensearch     v
+    send to Opensearch     |
+                           |
+                           v
                   +-----------------+
                   |                 |
                   |   Opensearch    |

@@ -113,7 +113,7 @@ def get_arguments():
     parser.add_argument("--job-name", help="CI job name(s). Parameter can be "
                         "set multiple times. If not set it would scrape "
                         "every latest builds.", action='append')
-    parser.add_argument("--gearman-server", help="Gearman host addresss")
+    parser.add_argument("--gearman-server", help="Gearman host address")
     parser.add_argument("--gearman-port", help="Gearman listen port.")
     parser.add_argument("--follow", help="Keep polling zuul builds", type=bool,
                         default=True)
@@ -151,7 +151,7 @@ def get_config_args(config_path):
 
 def parse_args(app_args, config_args):
     if not config_args:
-        logging.warning("Can not get informations from config files")
+        logging.warning("Can not get information from config files")
 
     # NOTE: When insecure flag is set as an argument, the value is False,
     # so if insecure is set to True in config file, it should also be False.
@@ -455,7 +455,7 @@ def load_config(config_path):
     except FileNotFoundError:
         logging.critical("Can not find provided config file! %s" % config_path)
     except Exception as e:
-        logging.critical("Exception occured on reading config file %s" % e)
+        logging.critical("Exception occurred on reading config file %s" % e)
 
 
 def get_files_to_check(config):
@@ -574,7 +574,7 @@ def setup_logging(debug):
 
 
 def run_build(build):
-    """Submit job informations into log processing system.
+    """Submit job information into log processing system.
 
     If CI job result is different than 'SUSSESS' or 'FAILURE' and download
     argument is set, it will create special file: 'custom-job-results.txt'
@@ -602,7 +602,7 @@ def run_build(build):
         except PermissionError:
             logging.critical("Can not create directory %s" % directory)
         except Exception as e:
-            logging.critical("Exception occured %s on creating dir %s" % (
+            logging.critical("Exception occurred %s on creating dir %s" % (
                 e, directory))
 
         if is_job_with_result(build):
@@ -621,7 +621,7 @@ def run_build(build):
         save_build_info(directory, build)
     else:
         # NOTE: As it was earlier, logs that contains status other than
-        # "SUCCESS" or "FAILUE" will be parsed by Gearman service.
+        # "SUCCESS" or "FAILURE" will be parsed by Gearman service.
         logging.debug("Parsing content for gearman service")
         results = dict(files=[], jobs=[], invocation={})
         files = check_specified_files(build, args.insecure)
@@ -663,7 +663,7 @@ def run_scraping(args, zuul_api_url, job_name=None):
                                       args.max_skipped, config.build_cache,
                                       job_name):
         logging.debug("Working on build %s" % build['uuid'])
-        # add missing informations
+        # add missing information
         build["tenant"] = config.tenant
         build["build_args"] = args
         build["config_file"] = config.config_file
@@ -714,7 +714,7 @@ def main():
     setup_logging(args.debug)
     if args.download and args.gearman_server and args.gearman_port:
         logging.critical("Can not use logscraper to send logs to gearman "
-                         "and dowload logs. Choose one")
+                         "and download logs. Choose one")
         sys.exit(1)
     while True:
         run(args)
