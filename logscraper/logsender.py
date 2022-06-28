@@ -63,6 +63,9 @@ def get_arguments():
     parser.add_argument("--password", help="Opensearch user password")
     parser.add_argument("--index-prefix", help="Prefix for the index.")
     parser.add_argument("--index", help="Opensearch index")
+    parser.add_argument("--performance-index-prefix", help="Prefix for the"
+                        "index that will proceed performance.json file"
+                        "NOTE: it will use same opensearch user credentials")
     parser.add_argument("--doc-type", help="Doc type information that will be"
                         "send to the Opensearch service")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
@@ -193,6 +196,29 @@ def makeFields(build_inventory, buildinfo):
     return fields
 
 
+def makeJsonFields(content):
+
+    content = json.loads(content)
+
+    fields = {}
+    query_types = ['GET', 'POST', 'DELETE', 'largest']
+
+    fields['hostname'] = content['report']['hostname']
+
+    for service in content.get('services', []):
+        fields[service['service']] = service.get('MemoryCurrent', 0)
+
+    for db in content.get('db', []):
+        fields[db['db']] = db.get('queries', 0)
+
+    for api_call in content.get('api', []):
+        name = api_call.get('service')
+        for query in query_types:
+            key_name = name + '_' + query.lower()
+            fields[key_name] = api_call.get(query)
+    return fields
+
+
 timestamp_patterns = [
     # 2022-03-25T17:40:37.220547Z
     (re.compile(r"(\S+)"), "%Y-%m-%dT%H:%M:%S.%fZ"),
@@ -299,13 +325,20 @@ def doc_iter(inner, index, es_fields, doc_type):
 
 
 def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type,
-               skip_debug):
+               skip_debug, perf_index):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
 
     try:
-        if build_file.endswith('performance.json'):
-            docs = doc_iter(json_iter(build_file), index, es_fields, doc_type)
+        # NOTE: The performance.json file will be only pushed into
+        # --performance-index-prefix index.
+        if build_file.endswith('performance.json') and perf_index:
+            working_doc = json_iter(build_file)
+            working_doc, working_doc_copy = itertools.tee(working_doc)
+            for (_, json_doc) in working_doc_copy:
+                performance_fields = makeJsonFields(json_doc)
+                es_fields.update(performance_fields)
+            docs = doc_iter(working_doc, perf_index, es_fields, doc_type)
             return helpers.bulk(es_client, docs, chunk_size=chunk_size)
 
         docs = doc_iter(logline_iter(build_file, skip_debug), index, es_fields,
@@ -325,7 +358,7 @@ def get_build_information(build_dir):
     return makeFields(build_inventory, buildinfo)
 
 
-def send(ready_directory, args, directory, index):
+def send(ready_directory, args, directory, index, perf_index):
     """Gen Opensearch fields and send"""
     # NOTE: each process should have own Opensearch session,
     # due error: TypeError: cannot pickle 'SSLSocket' object -
@@ -350,7 +383,7 @@ def send(ready_directory, args, directory, index):
         fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, args.chunk_size,
-                                 args.doc_type, args.skip_debug)
+                                 args.doc_type, args.skip_debug, perf_index)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)
@@ -363,6 +396,8 @@ def send(ready_directory, args, directory, index):
 
 
 def get_index(args):
+    indexes = [None, None]
+    perf_index = None
     index = args.index
 
     if not index:
@@ -370,7 +405,16 @@ def get_index(args):
             datetime.datetime.today().strftime('%Y.%m.%d')
 
     if create_indices(index, args):
-        return index
+        indexes[0] = index
+
+    if args.performance_index_prefix:
+        perf_index = args.performance_index_prefix + \
+            datetime.datetime.today().strftime('%Y.%m.%d')
+
+        if create_indices(perf_index, args):
+            indexes[1] = perf_index
+
+    return tuple(indexes)
 
 
 def create_indices(index, args):
@@ -388,7 +432,7 @@ def create_indices(index, args):
         # will not require any additional permissions set to the default
         # logstash role.
         if e.error.lower() == 'resource_already_exists_exception':
-            logging.debug("The indices already exists, continue")
+            logging.debug("The %s indices already exists, continue" % index)
             return True
     except opensearch_exceptions.TransportError as e:
         # NOTE(dpawlik) To avoid error: "TOO_MANY_REQUESTS/12/disk usage
@@ -406,7 +450,7 @@ def prepare_and_send(ready_directories, args):
     """Prepare information to send and Opensearch"""
 
     directory = args.directory
-    index = get_index(args)
+    index, perf_index = get_index(args)
     if not index:
         logging.critical("Can not continue without created indices")
         sys.exit(1)
@@ -415,7 +459,8 @@ def prepare_and_send(ready_directories, args):
         pool.starmap_async(send, zip(
             list(ready_directories.items()),
             itertools.repeat(args),
-            itertools.repeat(directory), itertools.repeat(index))).wait()
+            itertools.repeat(directory), itertools.repeat(index),
+            itertools.repeat(perf_index))).wait()
 
 
 def setup_logging(debug):

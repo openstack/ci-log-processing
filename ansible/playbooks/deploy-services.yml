@@ -22,6 +22,7 @@
         logsender_workers: 10
         logsender_wait_time: 10
         skip_debug: true
+        performance_index_prefix: "performance-"
   roles:
     - logscraper
     - logsender

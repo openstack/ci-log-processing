@@ -28,4 +28,5 @@ container_images:
 #     logsender_wait_time: 60
 #     custom_ca_crt: ""
 #     skip_debug: false
+#     performance_index_prefix: ""
 tenant_builds: []

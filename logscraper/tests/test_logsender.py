@@ -16,6 +16,8 @@
 
 import datetime
 import io
+import json
+import os
 
 from logscraper import logsender
 from logscraper.tests import base
@@ -249,6 +251,9 @@ parsed_fields = {
     'zuul_executor': 'ze07.opendev.org'
 }
 
+performance_json = open(os.path.join(os.path.dirname(__file__),
+                                     'performance-example.json')).read()
+
 
 def _parse_get_yaml(text):
     yaml = YAML()
@@ -273,7 +278,8 @@ class FakeArgs(object):
                  username=None, password=None, index_prefix=None, index=None,
                  doc_type=None, insecure=None, follow=None, workers=None,
                  chunk_size=None, skip_debug=None, keep=None, debug=None,
-                 wait_time=None, file_list=None):
+                 wait_time=None, file_list=None,
+                 performance_index_prefix=None):
 
         self.config = config
         self.directory = directory
@@ -293,6 +299,7 @@ class FakeArgs(object):
         self.debug = debug
         self.wait_time = wait_time
         self.file_list = file_list
+        self.performance_index_prefix = performance_index_prefix
 
 
 class TestSender(base.TestCase):
@@ -311,6 +318,7 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
+        perf_index = 'performance-index'
         mock_build_info.return_value = parsed_fields
         mock_es_client.return_value = 'fake_client_object'
         tags = ['test', 'info']
@@ -333,11 +341,12 @@ class TestSender(base.TestCase):
         }
         args = logsender.get_arguments()
         mock_send_to_es.return_value = True
-        logsender.send((build_uuid, build_files), args, directory, index)
+        logsender.send((build_uuid, build_files), args, directory, index,
+                       perf_index)
         self.assertTrue(mock_remove_dir.called)
         mock_send_to_es.assert_called_with(
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
-            'fake_client_object', index, None, '_doc', None)
+            'fake_client_object', index, None, '_doc', None, perf_index)
 
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -352,11 +361,13 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
+        perf_index = 'performance-index'
         args = logsender.get_arguments()
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         # No metter what is ES status, it should keep dir
         mock_send_to_es.return_value = None
-        logsender.send((build_uuid, build_files), args, directory, index)
+        logsender.send((build_uuid, build_files), args, directory, index,
+                       perf_index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -373,10 +384,12 @@ class TestSender(base.TestCase):
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
         index = 'logstash-index'
+        perf_index = 'performance-index'
         args = logsender.get_arguments()
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         mock_send_to_es.return_value = None
-        logsender.send((build_uuid, build_files), args, directory, index)
+        logsender.send((build_uuid, build_files), args, directory, index,
+                       perf_index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -387,7 +400,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='config.yaml', skip_debug=False))
+                config='config.yaml', skip_debug=False,
+                performance_index_prefix="perf"))
     def test_send_to_es(self, mock_args, mock_text, mock_bulk, mock_doc_iter,
                         mock_logline_chunk, mock_file_info):
         build_file = 'job-result.txt'
@@ -482,7 +496,8 @@ class TestSender(base.TestCase):
         }]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug)
+                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.performance_index_prefix)
         self.assertEqual(1, mock_bulk.call_count)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -493,7 +508,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=False))
+                config='test.yaml', skip_debug=False,
+                performance_index_prefix="perf"))
     def test_send_to_es_error(self, mock_args, mock_text, mock_bulk,
                               mock_logline, mock_doc_iter, mock_file_info):
         build_file = 'job-result.txt'
@@ -541,7 +557,8 @@ class TestSender(base.TestCase):
         })
         send_status = logsender.send_to_es(build_file, es_fields, es_client,
                                            args.index, args.chunk_size,
-                                           args.doc_type, args.skip_debug)
+                                           args.doc_type, args.skip_debug,
+                                           args.performance_index_prefix)
         self.assertIsNone(send_status)
 
     @mock.patch('json.load')
@@ -551,52 +568,192 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=False))
-    def test_send_to_es_json(self, mock_args, mock_text, mock_bulk,
-                             mock_file_info, mock_json_load):
+                config='test.yaml', skip_debug=False,
+                performance_index_prefix="perf"))
+    def test_send_to_es_performance(self, mock_args, mock_text, mock_bulk,
+                                    mock_file_info, mock_json_load):
         build_file = 'performance.json'
         es_fields = parsed_fields
         es_client = mock.Mock()
         args = logsender.get_arguments()
-        text = {
-            "transient": {
-                "cluster.index_state_management.coordinator.sweep_period": "1m"
-            },
-            "report": {
-                "timestamp": "2022-04-18T19:51:55.394370",
-                "hostname": "ubuntu-focal-rax-dfw-0029359041"
-            }
-        }
-        mock_json_load.return_value = text
-        mock_text.new_callable = mock.mock_open(read_data=str(text))
+        mock_json_load.return_value = json.loads(performance_json)
+        mock_text.new_callable = mock.mock_open(
+            read_data=str(performance_json))
         es_doc = {
-            '_index': 'myindex',
+            '_index': 'perf',
             '_source': {
-                '@timestamp': '2022-04-18T19:51:55',
-                'build_branch': 'master', 'build_change': 829161,
-                'build_name': 'openstack-tox-py39', 'build_newrev': 'UNKNOWN',
-                'build_node': 'zuul-executor', 'build_patchset': '3',
+                '@timestamp': '2022-05-17T22:49:50',
+                'build_branch': 'master',
+                'build_change': 829161,
+                'build_name': 'openstack-tox-py39',
+                'build_newrev': 'UNKNOWN',
+                'build_node': 'zuul-executor',
+                'build_patchset': '3',
                 'build_queue': 'check',
                 'build_ref': 'refs/changes/61/829161/3',
                 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
                 'build_status': 'SUCCESS',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'cinder': 0,
+                'compute_delete': None,
+                'compute_get': 17,
+                'compute_largest': 2568,
+                'compute_post': 20,
+                'devstack@c-api.service': 256569344,
+                'devstack@c-bak.service': 135827456,
+                'devstack@c-sch.service': 112668672,
+                'devstack@c-vol.service': 150151168,
+                'devstack@etcd.service': 80420864,
+                'devstack@g-api.service': 241049600,
+                'devstack@keystone.service': 260157440,
+                'devstack@memory_tracker.service': 5562368,
+                'devstack@n-api-meta.service': 223076352,
+                'devstack@n-api.service': 261332992,
+                'devstack@n-cond-cell1.service': 171405312,
+                'devstack@n-cpu.service': 138313728,
+                'devstack@n-novnc-cell1.service': 110931968,
+                'devstack@n-sch.service': 162050048,
+                'devstack@n-super-cond.service': 162463744,
+                'devstack@placement-api.service': 166539264,
+                'devstack@q-ovn-metadata-agent.service': 222007296,
+                'devstack@q-svc.service': 422805504,
+                'devstack@s-account.service': 62246912,
+                'devstack@s-container-sync.service': 45375488,
+                'devstack@s-container.service': 64376832,
+                'devstack@s-object.service': 64589824,
+                'devstack@s-proxy.service': 81174528,
+                'hostname': 'ubuntu-focal-ovh-gra1-0029678038',
                 'hosts_id':
                 ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
+                'identity_delete': None,
+                'identity_get': 1174,
+                'identity_largest': 3856,
+                'identity_post': 283,
+                'image_delete': None,
+                'image_get': 2,
+                'image_largest': 1410,
+                'image_post': 1,
+                'info_delete': None,
+                'info_get': 4,
+                'info_largest': 1659,
+                'info_post': None,
+                'keystone': 0,
                 'log_url':
                 'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
-                'message': '{"transient": '
-                '{"cluster.index_state_management.coordinator.sweep_period": '
-                '"1m"}, "report": {"timestamp": '
-                '"2022-04-18T19:51:55.394370", "hostname": '
-                '"ubuntu-focal-rax-dfw-0029359041"}}',
-                'node_provider': 'local', 'project': 'openstack/neutron',
-                'tenant': 'openstack', 'voting': 1,
-                'zuul_executor': 'ze07.opendev.org'
-                }, '_type': 'zuul'
-        }
+                'message':
+                    '{"services": [{"service": '
+                    '"devstack@s-object.service", "MemoryCurrent": '
+                    '64589824}, {"service": "devstack@keystone.service", '
+                    '"MemoryCurrent": 260157440}, {"service": '
+                    '"devstack@q-ovn-metadata-agent.service", '
+                    '"MemoryCurrent": 222007296}, {"service": '
+                    '"devstack@n-super-cond.service", "MemoryCurrent": '
+                    '162463744}, {"service": "devstack@c-vol.service", '
+                    '"MemoryCurrent": 150151168}, {"service": '
+                    '"devstack@n-api-meta.service", "MemoryCurrent": '
+                    '223076352}, {"service": "devstack@c-bak.service", '
+                    '"MemoryCurrent": 135827456}, {"service": '
+                    '"devstack@n-novnc-cell1.service", "MemoryCurrent": '
+                    '110931968}, {"service": "devstack@n-api.service", '
+                    '"MemoryCurrent": 261332992}, {"service": '
+                    '"devstack@memory_tracker.service", "MemoryCurrent": '
+                    '5562368}, {"service": "devstack@etcd.service", '
+                    '"MemoryCurrent": 80420864}, {"service": '
+                    '"devstack@q-svc.service", "MemoryCurrent": '
+                    '422805504}, {"service": '
+                    '"devstack@s-container-sync.service", "MemoryCurrent": '
+                    '45375488}, {"service": "devstack@g-api.service", '
+                    '"MemoryCurrent": 241049600}, {"service": '
+                    '"devstack@s-proxy.service", "MemoryCurrent": '
+                    '81174528}, {"service": "devstack@s-account.service", '
+                    '"MemoryCurrent": 62246912}, {"service": '
+                    '"devstack@c-sch.service", "MemoryCurrent": '
+                    '112668672}, {"service": "devstack@n-sch.service", '
+                    '"MemoryCurrent": 162050048}, {"service": '
+                    '"devstack@s-container.service", "MemoryCurrent": '
+                    '64376832}, {"service": "devstack@c-api.service", '
+                    '"MemoryCurrent": 256569344}, {"service": '
+                    '"devstack@n-cpu.service", "MemoryCurrent": '
+                    '138313728}, {"service": '
+                    '"devstack@placement-api.service", "MemoryCurrent": '
+                    '166539264}, {"service": '
+                    '"devstack@n-cond-cell1.service", "MemoryCurrent": '
+                    '171405312}], "db": [{"db": "placement", "op": '
+                    '"SELECT", "count": 4}, {"db": "nova_cell0", "op": '
+                    '"UPDATE", "count": 12}, {"db": "nova_cell0", "op": '
+                    '"SELECT", "count": 33}, {"db": "neutron", "op": '
+                    '"UPDATE", "count": 1}, {"db": "neutron", "op": '
+                    '"DELETE", "count": 1}, {"db": "neutron", "op": '
+                    '"SELECT", "count": 10}, {"db": "nova_cell1", "op": '
+                    '"SELECT", "count": 32}, {"db": "cinder", "op": '
+                    '"DELETE", "count": 1}, {"db": "keystone", "op": '
+                    '"SELECT", "count": 59}, {"db": "nova_cell1", "op": '
+                    '"UPDATE", "count": 12}, {"db": "cinder", "op": '
+                    '"INSERT", "count": 1}, {"db": "cinder", "op": '
+                    '"UPDATE", "count": 7}, {"db": "cinder", "op": '
+                    '"SELECT", "count": 52}], "processes": [{"cmd": '
+                    '"/usr/lib/erlang/erts-10.6.4/bin/beam.smp", "pid": '
+                    '34343, "args": "-W w -A 128 -MBas ageffcbf -MHas '
+                    'ageffcbf", "rss": 86900736}, {"cmd": '
+                    '"/usr/sbin/mysqld", "pid": 62703, "args": "", "rss": '
+                    '739282944}, {"cmd": "/opt/stack/bin/etcd", "pid": '
+                    '63704, "args": "--name '
+                    'ubuntu-focal-ovh-gra1-0029678038", "rss": 19349504}, '
+                    '{"cmd": "/usr/local/bin/privsep-helper", "pid": '
+                    '91395, "args": "--config-file '
+                    '/etc/neutron/neutron_ovn_metadata_agent.ini", "rss": '
+                    '82690048}], "api": [{"service": "identity", "log": '
+                    '"tls-proxy_access.log", "largest": 3402, "GET": 1173, '
+                    '"POST": 283}, {"service": "info", "log": '
+                    '"tls-proxy_access.log", "largest": 1659, "GET": 4}, '
+                    '{"service": "placement", "log": '
+                    '"tls-proxy_access.log", "largest": 1315, "GET": 9, '
+                    '"POST": 1, "PUT": 2}, {"service": "v2.0", "log": '
+                    '"tls-proxy_access.log", "largest": 10862, "GET": 19, '
+                    '"POST": 9, "PUT": 3}, {"service": "compute", "log": '
+                    '"tls-proxy_access.log", "largest": 2146, "GET": 16, '
+                    '"POST": 20}, {"service": "volume", "log": '
+                    '"tls-proxy_access.log", "largest": 390, "GET": 2, '
+                    '"POST": 2}, {"service": "image", "log": '
+                    '"tls-proxy_access.log", "largest": 1235, "GET": 2, '
+                    '"POST": 1}, {"service": "identity", "log": '
+                    '"access.log", "largest": 3856, "GET": 1174, "POST": '
+                    '283, "PUT": 34}, {"service": "compute", "log": '
+                    '"access.log", "largest": 2568, "GET": 17, "POST": '
+                    '20}, {"service": "placement", "log": "access.log", '
+                    '"largest": 1609, "GET": 9, "POST": 1, "PUT": 2}, '
+                    '{"service": "volume", "log": "access.log", "largest": '
+                    '758, "GET": 2, "POST": 2}, {"service": "image", '
+                    '"log": "access.log", "largest": 1410, "GET": 2, '
+                    '"POST": 1, "PUT": 1}], "report": {"timestamp": '
+                    '"2022-05-17T22:49:50.871392", "hostname": '
+                    '"ubuntu-focal-ovh-gra1-0029678038"}}',
+                'neutron': 0,
+                'node_provider': 'local',
+                'nova_cell0': 0,
+                'nova_cell1': 0,
+                'placement': 0,
+                'placement_delete': None,
+                'placement_get': 9,
+                'placement_largest': 1609,
+                'placement_post': 1,
+                'project': 'openstack/neutron',
+                'tenant': 'openstack',
+                'v2.0_delete': None,
+                'v2.0_get': 19,
+                'v2.0_largest': 10862,
+                'v2.0_post': 9,
+                'volume_delete': None,
+                'volume_get': 2,
+                'volume_largest': 758,
+                'volume_post': 2,
+                'voting': 1,
+                'zuul_executor': 'ze07.opendev.org'},
+            '_type': 'zuul'}
+
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug)
+                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.performance_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -608,7 +765,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=True))
+                config='test.yaml', skip_debug=True,
+                performance_index_prefix="perf"))
     def test_send_to_es_skip_debug(self, mock_args, mock_text, mock_bulk,
                                    mock_logline, mock_doc_iter,
                                    mock_file_info):
@@ -646,7 +804,8 @@ class TestSender(base.TestCase):
             '_type': 'zuul'}]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug)
+                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.performance_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1]))
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -727,6 +886,51 @@ class TestSender(base.TestCase):
                                               buildinfo_yaml)
         self.assertEqual(parsed_fields, generated_info)
 
+    def test_makeJsonFields(self):
+        expected_fields = {
+            'hostname': 'ubuntu-focal-ovh-gra1-0029678038',
+            'devstack@s-object.service': 64589824,
+            'devstack@keystone.service': 260157440,
+            'devstack@q-ovn-metadata-agent.service': 222007296,
+            'devstack@n-super-cond.service': 162463744,
+            'devstack@c-vol.service': 150151168,
+            'devstack@n-api-meta.service': 223076352,
+            'devstack@c-bak.service': 135827456,
+            'devstack@n-novnc-cell1.service': 110931968,
+            'devstack@n-api.service': 261332992,
+            'devstack@memory_tracker.service': 5562368,
+            'devstack@etcd.service': 80420864,
+            'devstack@q-svc.service': 422805504,
+            'devstack@s-container-sync.service': 45375488,
+            'devstack@g-api.service': 241049600,
+            'devstack@s-proxy.service': 81174528,
+            'devstack@s-account.service': 62246912,
+            'devstack@c-sch.service': 112668672,
+            'devstack@n-sch.service': 162050048,
+            'devstack@s-container.service': 64376832,
+            'devstack@c-api.service': 256569344,
+            'devstack@n-cpu.service': 138313728,
+            'devstack@placement-api.service': 166539264,
+            'devstack@n-cond-cell1.service': 171405312,
+            'placement': 0, 'nova_cell0': 0, 'neutron': 0,
+            'nova_cell1': 0, 'cinder': 0, 'keystone': 0,
+            'identity_get': 1174, 'identity_post': 283,
+            'identity_delete': None, 'identity_largest': 3856,
+            'info_get': 4, 'info_post': None, 'info_delete':
+            None, 'info_largest': 1659, 'placement_get': 9,
+            'placement_post': 1, 'placement_delete': None,
+            'placement_largest': 1609, 'v2.0_get': 19,
+            'v2.0_post': 9, 'v2.0_delete': None, 'v2.0_largest':
+            10862, 'compute_get': 17, 'compute_post': 20,
+            'compute_delete': None, 'compute_largest': 2568,
+            'volume_get': 2, 'volume_post': 2, 'volume_delete':
+            None, 'volume_largest': 758, 'image_get': 2,
+            'image_post': 1, 'image_delete': None,
+            'image_largest': 1410
+        }
+        fields = logsender.makeJsonFields(performance_json)
+        self.assertEqual(expected_fields, fields)
+
     def test_get_message(self):
         line_1 = "28-02-2022 09:44:58.839036 | Some message"
         line_2 = "2022-02-28 09:44:58.839036 | Other message | other log info"
@@ -781,16 +985,17 @@ class TestSender(base.TestCase):
         expected_index = ("my-index-%s" %
                           datetime.datetime.today().strftime('%Y.%m.%d'))
         index = logsender.get_index(args)
-        self.assertEqual(expected_index, index)
+        self.assertEqual((expected_index, None), index)
 
     @mock.patch('logscraper.logsender.send')
     @mock.patch('logscraper.logsender.get_index')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
-                directory="/tmp/testdir", workers=2, index='myindex'))
+                directory="/tmp/testdir", workers=2, index='myindex',
+                performance_index_prefix="perf"))
     def test_prepare_and_send(self, mock_args, mock_index, mock_send):
         args = logsender.get_arguments()
         ready_directories = {'builduuid': ['job-result.txt']}
-        mock_index.return_value = args.index
+        mock_index.return_value = (args.index, args.performance_index_prefix)
         with mock.patch(
                 'multiprocessing.pool.Pool.starmap_async',
                 lambda self, func, iterable, chunksize=None,
@@ -800,4 +1005,5 @@ class TestSender(base.TestCase):
             logsender.prepare_and_send(ready_directories, args)
             self.assertTrue(mock_send.called)
             mock_send.assert_called_with((('builduuid', ['job-result.txt']),
-                                          args, args.directory, args.index))
+                                          args, args.directory, args.index,
+                                          args.performance_index_prefix))
