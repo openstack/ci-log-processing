@@ -48,8 +48,21 @@ Details:
   tenant permissions:
     tenant: global_tenant
 
+* Logstash role (modify)
+Details:
+  name: logstash
+  cluster permissions: cluster_monitor, cluster_composite_ops, indices:admin/template/get, indices:admin/template/put, cluster:admin/ingest/pipeline/put, cluster:admin:ingest/pipeline/get
+  index permissions:
+    index: logstash-*, performance-*, *beat*
+    index permissions: crud, create_index
+  tenant permissions:
+    tenant: global_tenant
+
 NOTE:
 The `cluster:monitor/main` role is required to use Python Opensearch client.
+
+NOTE:
+The index `*beat*` is optional.
 
 ### Create role mapping
 
@@ -58,6 +71,10 @@ After creating the role, inside the role you will be able to attach the user tha
 ## Create ILM - Index Lifecycle Management
 
 In the OpenSearch Dashboard select `Index Management`, `State management policies`, and then `Create Policy`. Make a policy with the following policy statement:
+
+* For logstash-logs-*
+
+Delete data for logstash-logs index after 14 days
 
 ```json
 {
@@ -86,12 +103,62 @@ In the OpenSearch Dashboard select `Index Management`, `State management policie
                 ],
                 "transitions": []
             }
+        ],
+        "ism_template": [
+            {
+                "index_patterns": [
+                    "logstash-logs-*"
+                ]
+            }
         ]
     }
 }
 ```
 
 This will delete all indices that are at least 14 days old (e.g. the `logstash-logs-2021.12.15` index will be deleted on 2021-12-22).
+
+* For performance-*
+
+Policy ID: Delete data for performance index after 14 days
+
+```json
+{
+    "policy": {
+        "description": "Delete performance data after 14 days",
+        "default_state": "hot",
+        "states": [
+            {
+                "name": "hot",
+                "actions": [],
+                "transitions": [
+                    {
+                        "state_name": "delete",
+                        "conditions": {
+                            "min_index_age": "14d"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "delete",
+                "actions": [
+                    {
+                        "delete": {}
+                    }
+                ],
+                "transitions": []
+            }
+        ],
+        "ism_template": [
+            {
+                "index_patterns": [
+                    "performance-*"
+                ]
+            }
+        ]
+    }
+}
+```
 
 ## Advenced settings in Opensearch Dashboards
 
