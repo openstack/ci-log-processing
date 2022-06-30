@@ -201,21 +201,24 @@ def makeJsonFields(content):
     content = json.loads(content)
 
     fields = {}
-    query_types = ['GET', 'POST', 'DELETE', 'largest']
-
     fields['hostname'] = content['report']['hostname']
 
     for service in content.get('services', []):
-        fields[service['service']] = service.get('MemoryCurrent', 0)
+        key_name = "service_%s_memorycurrent" % service.get('service')
+        fields[key_name] = service.get('MemoryCurrent', 0)
 
     for db in content.get('db', []):
-        fields[db['db']] = db.get('queries', 0)
+        key_name = "db_%s_%s" % (db.get('db'), db.get('op').lower())
+        fields[key_name] = db.get('count', 0)
 
     for api_call in content.get('api', []):
         name = api_call.get('service')
-        for query in query_types:
-            key_name = name + '_' + query.lower()
-            fields[key_name] = api_call.get(query)
+        for api_type, count in api_call.items():
+            if api_type == 'service' or api_type == 'log':
+                continue
+            key_name = "api_%s_%s" % (name, api_type.lower())
+            fields[key_name] = count
+
     return fields
 
 
