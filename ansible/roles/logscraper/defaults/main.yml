@@ -31,4 +31,5 @@ container_images:
 #     debug: true
 #     logscraper_wait_time: 120
 #     custom_ca_crt: ""
+#     monitoring_port: ""
 tenant_builds: []
