@@ -108,7 +108,8 @@ def requests_get_json(url, verify=True):
 def get_arguments():
     parser = argparse.ArgumentParser(description="Fetch and push last Zuul "
                                      "CI job logs into gearman.")
-    parser.add_argument("--config", help="Logscraper config file")
+    parser.add_argument("--config", help="Logscraper config file",
+                        required=True)
     parser.add_argument("--file-list", help="File list to download")
     parser.add_argument("--zuul-api-url", help="URL(s) for Zuul API. Parameter"
                         " can be set multiple times.", action='append')
@@ -159,6 +160,10 @@ def parse_args(app_args, config_args):
     if not config_args:
         logging.warning("Can not get information from config files")
 
+    if not config_args:
+        print("The config file is necessary to provide!")
+        sys.exit(1)
+
     # NOTE: When insecure flag is set as an argument, the value is False,
     # so if insecure is set to True in config file, it should also be False.
     if not getattr(app_args, 'insecure') or (
@@ -170,6 +175,7 @@ def parse_args(app_args, config_args):
         # provided in config.
         if getattr(app_args, k, None) is None:
             setattr(app_args, k, v)
+
     return app_args
 
 
