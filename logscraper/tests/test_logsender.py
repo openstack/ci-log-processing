@@ -966,6 +966,31 @@ class TestSender(base.TestCase):
         fields = logsender.makeJsonFields(performance_json)
         self.assertEqual(expected_fields, fields)
 
+    def test_makeJsonFields_incorrect_values(self):
+        expected_fields = {
+            'api_placement_largest': 2151,
+            'hostname': 'ubuntu-focal-rax-iad-0030685864'
+        }
+
+        json_content = {
+            "services": [
+                {"service": "apache2.service", "MemoryCurrent": "[not set]"}],
+            "db": [{"db": "glance", "op": "DELETE", "count": "[not set]"}],
+            "api": [{
+                "service": "placement",
+                "largest": 2151,
+                "nova-scheduler-GET": "[not set]"
+            }],
+            "report": {
+                "timestamp": "2022-08-10T13:51:50.928521",
+                "hostname": "ubuntu-focal-rax-iad-0030685864",
+                "version": 2
+            }
+        }
+
+        fields = logsender.makeJsonFields(json.dumps(json_content))
+        self.assertEqual(expected_fields, fields)
+
     def test_get_message(self):
         line_1 = "28-02-2022 09:44:58.839036 | Some message"
         line_2 = "2022-02-28 09:44:58.839036 | Other message | other log info"

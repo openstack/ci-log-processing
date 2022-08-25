@@ -52,7 +52,8 @@ from ruamel.yaml import YAML
 def get_arguments():
     parser = argparse.ArgumentParser(description="Check log directories "
                                      "and push to the Opensearch service")
-    parser.add_argument("--config", help="Logscraper config file")
+    parser.add_argument("--config", help="Logscraper config file",
+                        required=True)
     parser.add_argument("--file-list", help="File list to download")
     parser.add_argument("--directory",
                         help="Directory, where the logs will "
@@ -205,17 +206,35 @@ def makeJsonFields(content):
 
     for service in content.get('services', []):
         key_name = "service_%s_memorycurrent" % service.get('service')
-        fields[key_name] = service.get('MemoryCurrent', 0)
+        current_mem = service.get('MemoryCurrent', 0)
+        if not isinstance(current_mem, int):
+            logging.debug("Incorrect service %s memory consumption %s."
+                          "Setting value to 0" % (service, current_mem))
+            continue
+
+        fields[key_name] = current_mem
 
     for db in content.get('db', []):
         key_name = "db_%s_%s" % (db.get('db'), db.get('op').lower())
-        fields[key_name] = db.get('count', 0)
+        db_count = db.get('count', 0)
+        if not isinstance(db_count, int):
+            logging.debug("Incorrect DB %s count %s. Setting value to 0" % (
+                db.get('db'), db_count))
+            continue
+
+        fields[key_name] = db_count
 
     for api_call in content.get('api', []):
         name = api_call.get('service')
         for api_type, count in api_call.items():
             if api_type == 'service' or api_type == 'log':
                 continue
+
+            if not isinstance(count, int):
+                logging.debug("Incorrect api call for %s with value: %s" % (
+                    name, count))
+                continue
+
             key_name = "api_%s_%s" % (name, api_type.lower())
             fields[key_name] = count
 
