@@ -276,7 +276,7 @@ class _MockedPoolMapAsyncResult:
 class FakeArgs(object):
     def __init__(self, config=None, directory=None, host=None, port=None,
                  username=None, password=None, index_prefix=None, index=None,
-                 doc_type=None, insecure=None, follow=None, workers=None,
+                 insecure=None, follow=None, workers=None,
                  chunk_size=None, skip_debug=None, keep=None, debug=None,
                  wait_time=None, file_list=None,
                  performance_index_prefix=None):
@@ -289,7 +289,6 @@ class FakeArgs(object):
         self.password = password
         self.index_prefix = index_prefix
         self.index = index
-        self.doc_type = doc_type
         self.insecure = insecure
         self.follow = follow
         self.workers = workers
@@ -310,7 +309,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.get_build_information')
     @mock.patch('logscraper.logsender.get_es_client')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
-                directory="/tmp/testdir", doc_type='_doc',
+                directory="/tmp/testdir",
                 config='config.yaml'))
     def test_send(self, mock_args, mock_es_client, mock_build_info,
                   mock_send_to_es, mock_remove_dir, mock_info):
@@ -323,22 +322,26 @@ class TestSender(base.TestCase):
         mock_es_client.return_value = 'fake_client_object'
         tags = ['test', 'info']
         mock_info.return_value = ('job-result.txt', tags)
+
         expected_fields = {
-            'build_node': 'zuul-executor', 'build_name': 'openstack-tox-py39',
-            'build_status': 'SUCCESS', 'project': 'openstack/neutron',
-            'voting': 1, 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
-            'build_queue': 'check', 'build_ref': 'refs/changes/61/829161/3',
-            'build_branch': 'master', 'build_change': 829161,
-            'build_patchset': '3', 'build_newrev': 'UNKNOWN',
-            'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
-            'node_provider': 'local', 'hosts_id':
-            ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
-            'log_url': 'https://somehost/829161/3/check/openstack-tox-py39/'
-                       '38bf2cd/job-result.txt',
-            'tenant': 'openstack', 'zuul_executor': 'ze07.opendev.org',
-            'filename': 'job-result.txt',
-            'tags': tags
-        }
+                'build_node': 'zuul-executor',
+                'build_name': 'openstack-tox-py39',
+                'build_status': 'SUCCESS', 'project': 'openstack/neutron',
+                'voting': 1, 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
+                'build_queue': 'check',
+                'build_ref': 'refs/changes/61/829161/3',
+                'build_branch': 'master', 'build_change': 829161,
+                'build_patchset': '3', 'build_newrev': 'UNKNOWN',
+                'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'node_provider': 'local',
+                'hosts_id': [
+                    'ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'
+                    ],
+                'log_url': 'https://somehost/829161/3/check/'
+                           'openstack-tox-py39/38bf2cd/job-result.txt',
+                'tenant': 'openstack', 'zuul_executor': 'ze07.opendev.org',
+                'filename': 'job-result.txt', 'tags': tags}
+
         args = logsender.get_arguments()
         mock_send_to_es.return_value = True
         logsender.send((build_uuid, build_files), args, directory, index,
@@ -346,7 +349,7 @@ class TestSender(base.TestCase):
         self.assertTrue(mock_remove_dir.called)
         mock_send_to_es.assert_called_with(
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
-            'fake_client_object', index, None, '_doc', None, perf_index)
+            'fake_client_object', index, None, None, perf_index)
 
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -354,7 +357,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.get_build_information')
     @mock.patch('logscraper.logsender.get_es_client')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
-                directory="/tmp/testdir", keep=True, doc_type="_doc"))
+                directory="/tmp/testdir", keep=True))
     def test_send_keep_dir(self, mock_args, mock_es_client, mock_build_info,
                            mock_send_to_es, mock_remove_dir, mock_info):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
@@ -376,7 +379,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.get_build_information')
     @mock.patch('logscraper.logsender.get_es_client')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
-                directory="/tmp/testdir", keep=False, doc_type="_doc"))
+                directory="/tmp/testdir", keep=False))
     def test_send_error_keep_dir(self, mock_args, mock_es_client,
                                  mock_build_info, mock_send_to_es,
                                  mock_remove_dir, mock_info):
@@ -399,7 +402,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
-                chunk_size=1000, doc_type="zuul",
+                chunk_size=1000,
                 config='config.yaml', skip_debug=False,
                 performance_index_prefix="perf"))
     def test_send_to_es(self, mock_args, mock_text, mock_bulk, mock_doc_iter,
@@ -414,7 +417,6 @@ class TestSender(base.TestCase):
         mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
-            '_type': 'zuul',
             '_source': {
                 'build_node': 'zuul-executor',
                 'build_name': 'openstack-tox-py39',
@@ -441,7 +443,6 @@ class TestSender(base.TestCase):
             }
         }, {
             '_index': 'myindex',
-            '_type': 'zuul',
             '_source': {
                 'build_node': 'zuul-executor',
                 'build_name': 'openstack-tox-py39',
@@ -468,7 +469,6 @@ class TestSender(base.TestCase):
             }
         }, {
             '_index': 'myindex',
-            '_type': 'zuul',
             '_source': {
                 'build_node': 'zuul-executor',
                 'build_name': 'openstack-tox-py39',
@@ -496,7 +496,7 @@ class TestSender(base.TestCase):
         }]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.chunk_size, args.skip_debug,
                              args.performance_index_prefix)
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -507,8 +507,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
-                chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=False,
+                chunk_size=1000, config='test.yaml', skip_debug=False,
                 performance_index_prefix="perf"))
     def test_send_to_es_error(self, mock_args, mock_text, mock_bulk,
                               mock_logline, mock_doc_iter, mock_file_info):
@@ -522,7 +521,6 @@ class TestSender(base.TestCase):
         mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
-            '_type': 'zuul',
             '_source': {
                 'build_node': 'zuul-executor',
                 'build_name': 'openstack-tox-py39',
@@ -557,7 +555,7 @@ class TestSender(base.TestCase):
         })
         send_status = logsender.send_to_es(build_file, es_fields, es_client,
                                            args.index, args.chunk_size,
-                                           args.doc_type, args.skip_debug,
+                                           args.skip_debug,
                                            args.performance_index_prefix)
         self.assertIsNone(send_status)
 
@@ -567,8 +565,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
-                chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=False,
+                chunk_size=1000, config='test.yaml', skip_debug=False,
                 performance_index_prefix="perf"))
     def test_send_to_es_performance(self, mock_args, mock_text, mock_bulk,
                                     mock_file_info, mock_json_load):
@@ -760,10 +757,10 @@ class TestSender(base.TestCase):
                 'tenant': 'openstack',
                 'voting': 1,
                 'zuul_executor': 'ze07.opendev.org'},
-            '_type': 'zuul'}
+            }
 
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.chunk_size, args.skip_debug,
                              args.performance_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
         self.assertEqual(1, mock_bulk.call_count)
@@ -775,8 +772,7 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
-                chunk_size=1000, doc_type="zuul",
-                config='test.yaml', skip_debug=True,
+                chunk_size=1000, config='test.yaml', skip_debug=True,
                 performance_index_prefix="perf"))
     def test_send_to_es_skip_debug(self, mock_args, mock_text, mock_bulk,
                                    mock_logline, mock_doc_iter,
@@ -811,11 +807,11 @@ class TestSender(base.TestCase):
                 'project': 'openstack/neutron',
                 'tenant': 'openstack',
                 'voting': 1,
-                'zuul_executor': 'ze07.opendev.org'},
-            '_type': 'zuul'}]
+                'zuul_executor': 'ze07.opendev.org'}
+            }]
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
-                             args.chunk_size, args.doc_type, args.skip_debug,
+                             args.chunk_size, args.skip_debug,
                              args.performance_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1]))
         self.assertEqual(1, mock_bulk.call_count)
@@ -832,19 +828,17 @@ class TestSender(base.TestCase):
                 '@timestamp': '2022-02-28T09:39:09.596000',
                 'field': 'test',
                 'message': 'Job console starting...'
-            },
-            '_type': '_doc'
+            }
         }, {
             '_index': 'someindex',
             '_source': {
                 '@timestamp': '2022-02-28T09:39:09.610000',
                 'field': 'test',
                 'message': 'Updating repositories'
-            },
-            '_type': '_doc'
+            }
         }]
         chunk_text = list(logsender.doc_iter(
-            text, 'someindex', {'field': 'test'}, '_doc'))
+            text, 'someindex', {'field': 'test'}))
         self.assertEqual(expected_chunk, chunk_text)
 
     def test_logline_iter(self):

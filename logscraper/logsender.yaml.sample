@@ -6,7 +6,6 @@ username: logstash
 password: ""
 index_prefix: "logstash-"
 index: ""
-doc_type: "_doc"
 chunk_size: 1500
 skip_debug: true
 keep: false

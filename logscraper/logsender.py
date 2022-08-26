@@ -67,8 +67,6 @@ def get_arguments():
     parser.add_argument("--performance-index-prefix", help="Prefix for the"
                         "index that will proceed performance.json file"
                         "NOTE: it will use same opensearch user credentials")
-    parser.add_argument("--doc-type", help="Doc type information that will be"
-                        "send to the Opensearch service")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
                         action="store_false")
     parser.add_argument("--follow", help="Keep sending CI logs", type=bool,
@@ -331,7 +329,7 @@ def logline_iter(build_file, skip_debug):
                 break
 
 
-def doc_iter(inner, index, es_fields, doc_type):
+def doc_iter(inner, index, es_fields):
     for (ts, line) in inner:
         fields = copy.deepcopy(es_fields)
         fields["@timestamp"] = ts.isoformat()
@@ -342,11 +340,11 @@ def doc_iter(inner, index, es_fields, doc_type):
 
         fields["message"] = message
 
-        doc = {"_index": index, "_type": doc_type, "_source": fields}
+        doc = {"_index": index, "_source": fields}
         yield doc
 
 
-def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type,
+def send_to_es(build_file, es_fields, es_client, index, chunk_size,
                skip_debug, perf_index):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
@@ -360,11 +358,10 @@ def send_to_es(build_file, es_fields, es_client, index, chunk_size, doc_type,
             for (_, json_doc) in working_doc_copy:
                 performance_fields = makeJsonFields(json_doc)
                 es_fields.update(performance_fields)
-            docs = doc_iter(working_doc, perf_index, es_fields, doc_type)
+            docs = doc_iter(working_doc, perf_index, es_fields)
             return helpers.bulk(es_client, docs, chunk_size=chunk_size)
 
-        docs = doc_iter(logline_iter(build_file, skip_debug), index, es_fields,
-                        doc_type)
+        docs = doc_iter(logline_iter(build_file, skip_debug), index, es_fields)
         return helpers.bulk(es_client, docs, chunk_size=chunk_size)
     except opensearch_exceptions.TransportError as e:
         logging.critical("Can not send message to Opensearch. Error: %s" % e)
@@ -405,7 +402,7 @@ def send(ready_directory, args, directory, index, perf_index):
         fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, args.chunk_size,
-                                 args.doc_type, args.skip_debug, perf_index)
+                                 args.skip_debug, perf_index)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)

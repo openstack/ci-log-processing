@@ -5,7 +5,6 @@ username: {{ item['es_username'] | default('logstash') }}
 password: "{{ item['es_password'] | default('') }}"
 index: {{ item['es_index'] | default('') }}
 index_prefix: {{ item['es_index_prefix'] | default('logstash-') }}
-doc_type: {{ item['doc_type'] | default('_doc') }}
 chunk_size: {{ item['chunk_size'] | default(1500) }}
 skip_debug: {{ item['skip_debug'] | default(true) }}
 keep: {{ item['keep'] | default(false) }}
