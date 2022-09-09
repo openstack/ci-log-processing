@@ -344,6 +344,7 @@ class LogMatcher(object):
         fields["build_ref"] = result["ref"]
         fields["build_branch"] = result.get("branch", "UNKNOWN")
         fields["build_zuul_url"] = "N/A"
+        fields["build_duration"] = result.get("duration", 0)
 
         if "change" in result:
             fields["build_change"] = result["change"]
