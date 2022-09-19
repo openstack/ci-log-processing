@@ -4,6 +4,8 @@
 # from https://opendev.org/opendev/base-jobs/src/branch/master/roles/submit-logstash-jobs/defaults/main.yaml
 files:
   # basic file
+  - name: testrepository.subunit
+    tags: []
   - name: zuul-info/inventory.yaml
     tags: []
   - name: job-output.txt

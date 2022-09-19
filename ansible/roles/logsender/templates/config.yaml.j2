@@ -18,3 +18,4 @@ ignore_es_status: {{ item['ignore_es_status'] | default(false) }}
 directory: {{ item['download_dir'] | default('/tmp/logscraper') }}
 file_list: {{ logscraper_dir }}/download-list-{{ item['tenant'] }}.yaml
 performance_index_prefix: {{ item['performance_index_prefix'] | default('') }}
+subunit_index_prefix: {{ item['subunit_index_prefix'] | default('') }}

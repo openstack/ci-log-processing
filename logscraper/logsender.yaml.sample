@@ -17,3 +17,4 @@ follow: true
 workers: 1
 file_list: logscraper/download-list.yaml.sample
 performance_index_prefix: ""
+subunit_index_prefix: ""

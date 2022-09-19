@@ -6,3 +6,4 @@ tenacity
 opensearch-py<=1.0.0   # Apache-2.0
 ruamel.yaml
 prometheus_client
+subunit2sql

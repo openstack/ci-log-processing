@@ -19,6 +19,7 @@
         es_insecure: true
         es_index: logstash-logscraper
         logscraper_dir: /etc/logscraper
+        subunit_index_prefix: "subunit-"
   tasks:
     - name: Run check services
       include_role:

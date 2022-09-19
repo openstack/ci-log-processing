@@ -44,6 +44,7 @@ from opensearchpy import exceptions as opensearch_exceptions
 from opensearchpy import helpers
 from opensearchpy import OpenSearch
 from ruamel.yaml import YAML
+from subunit2sql.read_subunit import ReadSubunit
 
 
 ###############################################################################
@@ -66,6 +67,9 @@ def get_arguments():
     parser.add_argument("--index", help="Opensearch index")
     parser.add_argument("--performance-index-prefix", help="Prefix for the"
                         "index that will proceed performance.json file"
+                        "NOTE: it will use same opensearch user credentials")
+    parser.add_argument("--subunit-index-prefix", help="Prefix for the"
+                        "index that will proceed testrepository.subunit file"
                         "NOTE: it will use same opensearch user credentials")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
                         action="store_false")
@@ -196,7 +200,6 @@ def makeFields(build_inventory, buildinfo):
 
 
 def makeJsonFields(content):
-
     content = json.loads(content)
 
     fields = {}
@@ -344,11 +347,34 @@ def doc_iter(inner, index, es_fields):
         yield doc
 
 
+def subunit_iter(file_name, index, es_fields):
+    with open(file_name) as f:
+        subunit = ReadSubunit(f)
+        parsed_subunit = subunit.get_results()
+
+    for test_name in parsed_subunit:
+        if test_name == "run_time":
+            continue
+
+        start_time = parsed_subunit[test_name]['start_time']
+        end_time = parsed_subunit[test_name]['end_time']
+        test_duration = end_time - start_time
+        test_duration = str(test_duration.seconds) + "." + \
+            str(test_duration.microseconds)
+
+        fields = copy.deepcopy(es_fields)
+
+        fields["test_name"] = test_name
+        fields["test_duration"] = test_duration
+        fields["test_status"] = parsed_subunit[test_name]["status"]
+
+        yield {"_index": index, "_source": fields}
+
+
 def send_to_es(build_file, es_fields, es_client, index, chunk_size,
-               skip_debug, perf_index):
+               skip_debug, perf_index, subunit_index):
     """Send document to the Opensearch"""
     logging.info("Working on %s" % build_file)
-
     try:
         # NOTE: The performance.json file will be only pushed into
         # --performance-index-prefix index.
@@ -359,6 +385,12 @@ def send_to_es(build_file, es_fields, es_client, index, chunk_size,
                 performance_fields = makeJsonFields(json_doc)
                 es_fields.update(performance_fields)
             docs = doc_iter(working_doc, perf_index, es_fields)
+            return helpers.bulk(es_client, docs, chunk_size=chunk_size)
+
+        # NOTE: The parsed testrepository.subunit file will be only pushed
+        # to the --subunit-index-prefix index.
+        if build_file.endswith('.subunit'):
+            docs = subunit_iter(build_file, subunit_index, es_fields)
             return helpers.bulk(es_client, docs, chunk_size=chunk_size)
 
         docs = doc_iter(logline_iter(build_file, skip_debug), index, es_fields)
@@ -377,7 +409,7 @@ def get_build_information(build_dir):
     return makeFields(build_inventory, buildinfo)
 
 
-def send(ready_directory, args, directory, index, perf_index):
+def send(ready_directory, args, directory, index, perf_index, subunit_index):
     """Gen Opensearch fields and send"""
     # NOTE: each process should have own Opensearch session,
     # due error: TypeError: cannot pickle 'SSLSocket' object -
@@ -402,7 +434,7 @@ def send(ready_directory, args, directory, index, perf_index):
         fields['tags'] = file_tags
         send_status = send_to_es("%s/%s" % (build_dir, build_file),
                                  fields, es_client, index, args.chunk_size,
-                                 args.skip_debug, perf_index)
+                                 args.skip_debug, perf_index, subunit_index)
 
     if args.keep:
         logging.info("Keeping file %s" % build_dir)
@@ -415,8 +447,9 @@ def send(ready_directory, args, directory, index, perf_index):
 
 
 def get_index(args):
-    indexes = [None, None]
+    indexes = [None, None, None]
     perf_index = None
+    subunit_index = None
     index = args.index
 
     if not index:
@@ -432,6 +465,12 @@ def get_index(args):
 
         if create_indices(perf_index, args):
             indexes[1] = perf_index
+
+    if args.subunit_index_prefix:
+        subunit_index = args.subunit_index_prefix + \
+               datetime.datetime.today().strftime('%Y.%m.%d')
+        if create_indices(subunit_index, args):
+            indexes[2] = subunit_index
 
     return tuple(indexes)
 
@@ -469,7 +508,7 @@ def prepare_and_send(ready_directories, args):
     """Prepare information to send and Opensearch"""
 
     directory = args.directory
-    index, perf_index = get_index(args)
+    index, perf_index, subunit_index = get_index(args)
     if not index:
         logging.critical("Can not continue without created indices")
         sys.exit(1)
@@ -479,7 +518,8 @@ def prepare_and_send(ready_directories, args):
             list(ready_directories.items()),
             itertools.repeat(args),
             itertools.repeat(directory), itertools.repeat(index),
-            itertools.repeat(perf_index))).wait()
+            itertools.repeat(perf_index),
+            itertools.repeat(subunit_index))).wait()
 
 
 def setup_logging(debug):

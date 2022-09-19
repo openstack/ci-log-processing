@@ -23,6 +23,7 @@
         logsender_wait_time: 10
         skip_debug: true
         performance_index_prefix: "performance-"
+        subunit_index_prefix: "subunit-"
         monitoring_port: 9128
   roles:
     - logscraper

@@ -13,7 +13,7 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
+import copy
 import datetime
 import io
 import json
@@ -279,7 +279,7 @@ class FakeArgs(object):
                  insecure=None, follow=None, workers=None,
                  chunk_size=None, skip_debug=None, keep=None, debug=None,
                  wait_time=None, file_list=None,
-                 performance_index_prefix=None):
+                 performance_index_prefix=None, subunit_index_prefix=None):
 
         self.config = config
         self.directory = directory
@@ -299,6 +299,7 @@ class FakeArgs(object):
         self.wait_time = wait_time
         self.file_list = file_list
         self.performance_index_prefix = performance_index_prefix
+        self.subunit_index_prefix = subunit_index_prefix
 
 
 class TestSender(base.TestCase):
@@ -318,6 +319,7 @@ class TestSender(base.TestCase):
         directory = '/tmp/testdir'
         index = 'logstash-index'
         perf_index = 'performance-index'
+        subunit_index = 'subunit-index'
         mock_build_info.return_value = parsed_fields
         mock_es_client.return_value = 'fake_client_object'
         tags = ['test', 'info']
@@ -345,11 +347,11 @@ class TestSender(base.TestCase):
         args = logsender.get_arguments()
         mock_send_to_es.return_value = True
         logsender.send((build_uuid, build_files), args, directory, index,
-                       perf_index)
+                       perf_index, subunit_index)
         self.assertTrue(mock_remove_dir.called)
         mock_send_to_es.assert_called_with(
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
-            'fake_client_object', index, None, None, perf_index)
+            'fake_client_object', index, None, None, perf_index, subunit_index)
 
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -365,12 +367,13 @@ class TestSender(base.TestCase):
         directory = '/tmp/testdir'
         index = 'logstash-index'
         perf_index = 'performance-index'
+        subunit_index = 'subunit-index'
         args = logsender.get_arguments()
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         # No metter what is ES status, it should keep dir
         mock_send_to_es.return_value = None
         logsender.send((build_uuid, build_files), args, directory, index,
-                       perf_index)
+                       perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -388,11 +391,12 @@ class TestSender(base.TestCase):
         directory = '/tmp/testdir'
         index = 'logstash-index'
         perf_index = 'performance-index'
+        subunit_index = 'subunit-index'
         args = logsender.get_arguments()
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         mock_send_to_es.return_value = None
         logsender.send((build_uuid, build_files), args, directory, index,
-                       perf_index)
+                       perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -404,7 +408,8 @@ class TestSender(base.TestCase):
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000,
                 config='config.yaml', skip_debug=False,
-                performance_index_prefix="perf"))
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
     def test_send_to_es(self, mock_args, mock_text, mock_bulk, mock_doc_iter,
                         mock_logline_chunk, mock_file_info):
         build_file = 'job-result.txt'
@@ -497,7 +502,8 @@ class TestSender(base.TestCase):
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
                              args.chunk_size, args.skip_debug,
-                             args.performance_index_prefix)
+                             args.performance_index_prefix,
+                             args.subunit_index_prefix)
         self.assertEqual(1, mock_bulk.call_count)
 
     @mock.patch('logscraper.logsender.get_file_info')
@@ -508,7 +514,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=False,
-                performance_index_prefix="perf"))
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
     def test_send_to_es_error(self, mock_args, mock_text, mock_bulk,
                               mock_logline, mock_doc_iter, mock_file_info):
         build_file = 'job-result.txt'
@@ -556,7 +563,8 @@ class TestSender(base.TestCase):
         send_status = logsender.send_to_es(build_file, es_fields, es_client,
                                            args.index, args.chunk_size,
                                            args.skip_debug,
-                                           args.performance_index_prefix)
+                                           args.performance_index_prefix,
+                                           args.subunit_index_prefix)
         self.assertIsNone(send_status)
 
     @mock.patch('json.load')
@@ -566,7 +574,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=False,
-                performance_index_prefix="perf"))
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
     def test_send_to_es_performance(self, mock_args, mock_text, mock_bulk,
                                     mock_file_info, mock_json_load):
         build_file = 'performance.json'
@@ -761,7 +770,8 @@ class TestSender(base.TestCase):
 
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
                              args.chunk_size, args.skip_debug,
-                             args.performance_index_prefix)
+                             args.performance_index_prefix,
+                             args.subunit_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1])[0])
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -773,7 +783,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=True,
-                performance_index_prefix="perf"))
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
     def test_send_to_es_skip_debug(self, mock_args, mock_text, mock_bulk,
                                    mock_logline, mock_doc_iter,
                                    mock_file_info):
@@ -812,7 +823,8 @@ class TestSender(base.TestCase):
         mock_doc_iter.return_value = es_doc
         logsender.send_to_es(build_file, es_fields, es_client, args.index,
                              args.chunk_size, args.skip_debug,
-                             args.performance_index_prefix)
+                             args.performance_index_prefix,
+                             args.subunit_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1]))
         self.assertEqual(1, mock_bulk.call_count)
 
@@ -1039,17 +1051,19 @@ class TestSender(base.TestCase):
         expected_index = ("my-index-%s" %
                           datetime.datetime.today().strftime('%Y.%m.%d'))
         index = logsender.get_index(args)
-        self.assertEqual((expected_index, None), index)
+        self.assertEqual((expected_index, None, None), index)
 
     @mock.patch('logscraper.logsender.send')
     @mock.patch('logscraper.logsender.get_index')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", workers=2, index='myindex',
-                performance_index_prefix="perf"))
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
     def test_prepare_and_send(self, mock_args, mock_index, mock_send):
         args = logsender.get_arguments()
         ready_directories = {'builduuid': ['job-result.txt']}
-        mock_index.return_value = (args.index, args.performance_index_prefix)
+        mock_index.return_value = (args.index, args.performance_index_prefix,
+                                   args.subunit_index_prefix)
         with mock.patch(
                 'multiprocessing.pool.Pool.starmap_async',
                 lambda self, func, iterable, chunksize=None,
@@ -1060,4 +1074,128 @@ class TestSender(base.TestCase):
             self.assertTrue(mock_send.called)
             mock_send.assert_called_with((('builduuid', ['job-result.txt']),
                                           args, args.directory, args.index,
-                                          args.performance_index_prefix))
+                                          args.performance_index_prefix,
+                                          args.subunit_index_prefix))
+
+
+class TestSubunit(base.TestCase):
+    def setUp(self):
+        super().setUp()
+
+        subunit_parsed_fields_1 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_1.update({
+            'test_name':
+                'setUpClass (neutron_tempest_plugin.scenario.'
+                'test_dns_integration.'
+                'DNSIntegrationDomainPerProjectTests)',
+            'test_duration': '0.0',
+            'test_status': 'skip'
+        })
+
+        subunit_parsed_fields_2 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_2.update({
+            'test_name':
+                'neutron_tempest_plugin.scenario.test_dns_integration.'
+                'DNSIntegrationAdminTests.'
+                'test_fip_admin_delete',
+            'test_duration': '7.103220',
+            'test_status': 'success'
+
+        })
+
+        subunit_parsed_fields_3 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_3.update({
+            'test_name':
+                'neutron_tempest_plugin.scenario.test_dns_integration.'
+                'DNSIntegrationExtraTests.'
+                'test_port_with_publishing_subnet',
+            'test_duration': '9.188214',
+            'test_status': 'success'
+        })
+
+        subunit_parsed_fields_4 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_4.update({
+            'test_name':
+                'neutron_tempest_plugin.scenario.test_dns_integration.'
+                'DNSIntegrationTests.'
+                'test_fip',
+            'test_duration': '6.738004',
+            'test_status': 'success'
+        })
+
+        subunit_parsed_fields_5 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_5.update({
+            'test_name':
+                'neutron_tempest_plugin.scenario.test_dns_integration.'
+                'DNSIntegrationAdminTests.'
+                'test_port_on_special_network',
+            'test_duration': '6.611149',
+            'test_status': 'success'
+        })
+
+        subunit_parsed_fields_6 = copy.deepcopy(parsed_fields)
+        subunit_parsed_fields_6.update({
+            'test_name':
+                'neutron_tempest_plugin.scenario.test_dns_integration.'
+                'DNSIntegrationTests.'
+                'test_server_with_fip',
+            'test_duration': '30.278503',
+            'test_status': 'success'
+        })
+
+        self.subunit_docs = [
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_1
+            },
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_2
+            },
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_3
+            },
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_4
+            },
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_5
+            },
+            {
+                '_index': 'subunit',
+                '_source': subunit_parsed_fields_6
+            }
+        ]
+
+    def test_subunit_iter(self):
+        subunit_file_name = os.path.join(os.path.dirname(__file__),
+                                         "testrepository.subunit")
+        subunit_index_name = "subunit"
+
+        result = list(logsender.subunit_iter(file_name=subunit_file_name,
+                                             index=subunit_index_name,
+                                             es_fields=parsed_fields))
+        self.assertEqual(result, self.subunit_docs)
+
+    @mock.patch('opensearchpy.helpers.bulk')
+    @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
+                directory="/tmp/testdir", index="myindex", workers=1,
+                chunk_size=1000, config='test.yaml', skip_debug=False,
+                performance_index_prefix="perf",
+                subunit_index_prefix="subunit"))
+    def test_send_to_es_subunit(self, mock_args, mock_bulk):
+        build_file = os.path.join(os.path.dirname(__file__),
+                                  "testrepository.subunit")
+        es_fields = parsed_fields
+        es_client = mock.Mock()
+        args = logsender.get_arguments()
+        logsender.send_to_es(build_file, es_fields, es_client, args.index,
+                             args.chunk_size, args.skip_debug,
+                             args.performance_index_prefix,
+                             args.subunit_index_prefix)
+
+        bulk_arg_docs = list(mock_bulk.call_args.args[1])
+        self.assertEqual(bulk_arg_docs, self.subunit_docs)
