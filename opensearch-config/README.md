@@ -40,23 +40,29 @@ Created roles:
 
 * Readonly role is creaded base on the [inscruction](https://opensearch.org/docs/latest/security-plugin/access-control/users-roles/#set-up-a-read-only-user-in-opensearch-dashboards)
 Details:
-  name: readonly
-  cluster permissions: cluster_composite_ops_ro, cluster:monitor/main
-  index permissions:
-    index: *
-    index permissions: read
-  tenant permissions:
-    tenant: global_tenant
+
+```
+name: readonly
+cluster permissions: cluster_composite_ops_ro, cluster:monitor/main
+index permissions:
+  index: *
+  index permissions: read
+tenant permissions:
+  tenant: global_tenant
+```
 
 * Logstash role (modify)
 Details:
-  name: logstash
-  cluster permissions: cluster_monitor, cluster_composite_ops, indices:admin/template/get, indices:admin/template/put, cluster:admin/ingest/pipeline/put, cluster:admin:ingest/pipeline/get
-  index permissions:
-    index: logstash-*, performance-*, *beat*
-    index permissions: crud, create_index
-  tenant permissions:
-    tenant: global_tenant
+
+```
+name: logstash
+cluster permissions: cluster_monitor, cluster_composite_ops, indices:admin/template/get, indices:admin/template/put, cluster:admin/ingest/pipeline/put, cluster:admin:ingest/pipeline/get
+index permissions:
+  index: logstash-*, performance-*, subunit-*, *beat*
+  index permissions: crud, create_index
+tenant permissions:
+  tenant: global_tenant
+```
 
 NOTE:
 The `cluster:monitor/main` role is required to use Python Opensearch client.
@@ -153,6 +159,49 @@ Policy ID: Delete data for performance index after 14 days
             {
                 "index_patterns": [
                     "performance-*"
+                ]
+            }
+        ]
+    }
+}
+```
+
+* For subunit-*
+
+Policy ID: Delete data for subunit index after 14 days
+
+```json
+{
+    "policy": {
+        "description": "Delete subunit data after 14 days",
+        "default_state": "hot",
+        "states": [
+            {
+                "name": "hot",
+                "actions": [],
+                "transitions": [
+                    {
+                        "state_name": "delete",
+                        "conditions": {
+                            "min_index_age": "14d"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "delete",
+                "actions": [
+                    {
+                        "delete": {}
+                    }
+                ],
+                "transitions": []
+            }
+        ],
+        "ism_template": [
+            {
+                "index_patterns": [
+                    "subunit-*"
                 ]
             }
         ]
