@@ -1089,7 +1089,8 @@ class TestSubunit(base.TestCase):
                 'test_dns_integration.'
                 'DNSIntegrationDomainPerProjectTests)',
             'test_duration': '0.0',
-            'test_status': 'skip'
+            'test_status': 'skip',
+            '@timestamp': '2022-09-21T08:10:06Z'
         })
 
         subunit_parsed_fields_2 = copy.deepcopy(parsed_fields)
@@ -1099,8 +1100,8 @@ class TestSubunit(base.TestCase):
                 'DNSIntegrationAdminTests.'
                 'test_fip_admin_delete',
             'test_duration': '7.103220',
-            'test_status': 'success'
-
+            'test_status': 'success',
+            '@timestamp': '2022-09-21T08:10:20Z'
         })
 
         subunit_parsed_fields_3 = copy.deepcopy(parsed_fields)
@@ -1110,7 +1111,8 @@ class TestSubunit(base.TestCase):
                 'DNSIntegrationExtraTests.'
                 'test_port_with_publishing_subnet',
             'test_duration': '9.188214',
-            'test_status': 'success'
+            'test_status': 'success',
+            '@timestamp': '2022-09-21T08:10:20Z'
         })
 
         subunit_parsed_fields_4 = copy.deepcopy(parsed_fields)
@@ -1120,7 +1122,8 @@ class TestSubunit(base.TestCase):
                 'DNSIntegrationTests.'
                 'test_fip',
             'test_duration': '6.738004',
-            'test_status': 'success'
+            'test_status': 'success',
+            '@timestamp': '2022-09-21T08:10:23Z'
         })
 
         subunit_parsed_fields_5 = copy.deepcopy(parsed_fields)
@@ -1130,7 +1133,8 @@ class TestSubunit(base.TestCase):
                 'DNSIntegrationAdminTests.'
                 'test_port_on_special_network',
             'test_duration': '6.611149',
-            'test_status': 'success'
+            'test_status': 'success',
+            '@timestamp': '2022-09-21T08:10:27Z'
         })
 
         subunit_parsed_fields_6 = copy.deepcopy(parsed_fields)
@@ -1140,7 +1144,8 @@ class TestSubunit(base.TestCase):
                 'DNSIntegrationTests.'
                 'test_server_with_fip',
             'test_duration': '30.278503',
-            'test_status': 'success'
+            'test_status': 'success',
+            '@timestamp': '2022-09-21T08:10:30Z'
         })
 
         self.subunit_docs = [
