@@ -16,6 +16,7 @@
 FROM quay.io/centos/centos:stream8
 
 ENV PATH=/workspace/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LANG=en_US.UTF-8
 
 RUN groupadd logscraper --gid 1000 && \
     useradd --home-dir /home/logscraper --gid 1000 --uid 1000 logscraper
