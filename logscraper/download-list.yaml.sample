@@ -179,6 +179,10 @@ files:
       - devstack
       - glance
   # TripleO
+  - name: logs/undercloud/home/zuul/overcloud_deploy.log.txt
+    tags:
+      - overcloud
+      - tripleo
   - name: logs/undercloud/var/log/extra/logstash.txt
     tags:
       - console
