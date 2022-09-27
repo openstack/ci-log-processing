@@ -426,6 +426,16 @@ def send(ready_directory, args, directory, index, perf_index, subunit_index):
     logging.debug("Provided build info %s" % es_fields)
 
     for build_file in build_files:
+        # NOTE(dpawlik): In some job results, there is a file
+        # testrepository.subunit.gz that does not contain anything, but it
+        # raise an error on parsing it, so later the logsender is not removing
+        # the CI job directory, so the job results is sended many times until
+        # the file is not removed.
+        if build_file == 'testrepository.subunit.gz':
+            logging.warning("The file %s is marked as broken. "
+                            "Skipping..." % build_file)
+            continue
+
         fields = copy.deepcopy(es_fields)
         file_name, file_tags = get_file_info(args.file_list, build_file)
         fields["filename"] = build_file

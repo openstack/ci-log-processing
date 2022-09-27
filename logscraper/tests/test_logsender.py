@@ -400,6 +400,57 @@ class TestSender(base.TestCase):
         self.assertFalse(mock_remove_dir.called)
 
     @mock.patch('logscraper.logsender.get_file_info')
+    @mock.patch('logscraper.logsender.remove_directory')
+    @mock.patch('logscraper.logsender.send_to_es')
+    @mock.patch('logscraper.logsender.get_build_information')
+    @mock.patch('logscraper.logsender.get_es_client')
+    @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
+                directory="/tmp/testdir",
+                config='config.yaml'))
+    def test_send_skip_broken_file(self, mock_args, mock_es_client,
+                                   mock_build_info, mock_send_to_es,
+                                   mock_remove_dir, mock_info):
+        build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
+        build_files = ['job-result.txt', 'testrepository.subunit.gz']
+        directory = '/tmp/testdir'
+        index = 'logstash-index'
+        perf_index = 'performance-index'
+        subunit_index = 'subunit-index'
+        mock_build_info.return_value = parsed_fields
+        mock_es_client.return_value = 'fake_client_object'
+        tags = ['test', 'info']
+        mock_info.return_value = ('job-result.txt', tags)
+
+        expected_fields = {
+                'build_node': 'zuul-executor',
+                'build_name': 'openstack-tox-py39',
+                'build_status': 'SUCCESS', 'project': 'openstack/neutron',
+                'voting': 1, 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
+                'build_queue': 'check',
+                'build_ref': 'refs/changes/61/829161/3',
+                'build_branch': 'master', 'build_change': 829161,
+                'build_patchset': '3', 'build_newrev': 'UNKNOWN',
+                'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'node_provider': 'local',
+                'hosts_id': [
+                    'ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'
+                    ],
+                'log_url': 'https://somehost/829161/3/check/'
+                           'openstack-tox-py39/38bf2cd/job-result.txt',
+                'tenant': 'openstack', 'zuul_executor': 'ze07.opendev.org',
+                'filename': 'job-result.txt', 'tags': tags}
+
+        args = logsender.get_arguments()
+        mock_send_to_es.return_value = True
+        logsender.send((build_uuid, build_files), args, directory, index,
+                       perf_index, subunit_index)
+        self.assertTrue(mock_remove_dir.called)
+        # Ensure that send_to_es was called just once
+        mock_send_to_es.assert_called_once_with(
+            "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
+            'fake_client_object', index, None, None, perf_index, subunit_index)
+
+    @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.doc_iter')
     @mock.patch('logscraper.logsender.logline_iter')
     @mock.patch('opensearchpy.helpers.bulk')
