@@ -179,6 +179,10 @@ files:
       - devstack
       - glance
   # TripleO
+  - name: logs/testrepository.subunit
+    tags:
+      - tempest
+      - tripleo
   - name: logs/undercloud/home/zuul/overcloud_deploy.log.txt
     tags:
       - overcloud
