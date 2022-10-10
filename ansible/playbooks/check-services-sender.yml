@@ -25,3 +25,8 @@
       include_role:
         name: check-services
         tasks_from: download.yml
+
+    - name: Run backup and restore test
+      include_role:
+        name: backup-dashboards-objects
+        tasks_from: main.yml
