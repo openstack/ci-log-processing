@@ -732,6 +732,8 @@ def run(args, monitoring):
             logging.info("Starting checking logs for %s" % zuul_api_url)
             run_scraping(args, zuul_api_url, monitoring=monitoring)
 
+    logging.info("Finished pulling logs!")
+
 
 def main():
     app_args = get_arguments()
