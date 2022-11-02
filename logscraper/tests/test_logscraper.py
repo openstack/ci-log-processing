@@ -566,6 +566,7 @@ class TestLogMatcher(base.TestCase):
         parsed_job = {
             "build_branch": "master",
             "build_change": 806255,
+            "build_duration": 307.0,
             "build_name": "openstack-tox-py38",
             "build_node": "zuul-executor",
             "build_patchset": "9",
@@ -616,6 +617,7 @@ class TestLogMatcher(base.TestCase):
         parsed_job = {
             'build_branch': 'master',
             'build_change': 816445,
+            "build_duration": 603.0,
             'build_name': 'tripleo-centos-8',
             'build_node': 'zuul-executor',
             'build_patchset': '1',
@@ -666,6 +668,7 @@ class TestLogMatcher(base.TestCase):
         parsed_job = {
             'build_branch': 'stable/victoria',
             'build_change': 816486,
+            'build_duration': 18,
             'build_name': 'openstack-tox-lower-constraints',
             'build_node': 'zuul-executor',
             'build_patchset': '1',
