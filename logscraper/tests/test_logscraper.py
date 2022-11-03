@@ -216,11 +216,15 @@ class TestScraper(base.TestCase):
             'http://somehost.com/api/tenant/tenant1', job_names, False)
         self.assertEqual(['openstack-tox-py38'], result)
 
+    @mock.patch('requests.get')
     @mock.patch('logscraper.logscraper.Monitoring')
     @mock.patch('logscraper.logscraper.filter_available_jobs',
                 side_effect=[['testjob1', 'testjob2'], [], []])
     @mock.patch('logscraper.logscraper.run_scraping')
-    def test_run_with_jobs(self, mock_scraping, mock_jobs, mock_monitoring):
+    def test_run_with_jobs(self, mock_scraping, mock_jobs, mock_monitoring,
+                           mock_zuul):
+        mock_zuul.side_effect = mock.PropertyMock(
+            return_value=mock.Mock(status_code=200))
         # when multiple job name provied, its iterate on zuul jobs
         # if such job is available.
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
@@ -317,9 +321,12 @@ class TestScraper(base.TestCase):
                                  mock_specified_files.call_args.args[0])
                 self.assertFalse(mock_save_buildinfo.called)
 
+    @mock.patch('requests.get')
     @mock.patch('logscraper.logscraper.Monitoring')
     @mock.patch('logscraper.logscraper.run_scraping')
-    def test_run(self, mock_scraping, mock_monitoring):
+    def test_run(self, mock_scraping, mock_monitoring, mock_zuul):
+        mock_zuul.side_effect = mock.PropertyMock(
+            return_value=mock.Mock(status_code=200))
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
                 zuul_api_url=['http://somehost.com/api/tenant/tenant1',
@@ -460,6 +467,24 @@ class TestScraper(base.TestCase):
         self.assertTrue(mock_gear_client.called)
         self.assertTrue(mock_check_files.called)
         self.assertFalse(mock_custom_result.called)
+
+    @mock.patch('requests.get')
+    @mock.patch('logscraper.logscraper.Monitoring')
+    @mock.patch('logscraper.logscraper.run_scraping')
+    def test_run_zuul_down(self, mock_scraping, mock_monitoring, mock_zuul):
+        mock_zuul.side_effect = mock.PropertyMock(
+            return_value=mock.Mock(status_code=400))
+
+        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
+            mock_args.return_value = FakeArgs(
+                zuul_api_url=['http://somehost.com/api/tenant/tenant1',
+                              'http://somehost.com/api/tenant/tenant2',
+                              'http://somehost.com/api/tenant/tenant3'],
+                gearman_server='localhost')
+            args = logscraper.get_arguments()
+
+            logscraper.run(args, mock_monitoring)
+            self.assertEqual(0, mock_scraping.call_count)
 
     def test_create_custom_result(self):
         build = builds_result[2]

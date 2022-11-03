@@ -102,6 +102,14 @@ def requests_get_json(url, verify=True):
     return resp.json()
 
 
+def is_zuul_host_up(url, verify=True):
+    try:
+        resp = requests_get(url, verify)
+        return resp.status_code < 400
+    except requests.exceptions.HTTPError:
+        pass
+
+
 ###############################################################################
 #                                    CLI                                      #
 ###############################################################################
@@ -720,6 +728,12 @@ def run(args, monitoring):
         validate_ca = args.insecure
 
     for zuul_api_url in args.zuul_api_url:
+
+        if not is_zuul_host_up(zuul_api_url, validate_ca):
+            logging.warning("Zuul %s seems not to be reachable. "
+                            "Postponing pulling logs..." % zuul_api_url)
+            continue
+
         if args.job_name:
             jobs_in_zuul = filter_available_jobs(zuul_api_url, args.job_name,
                                                  validate_ca)
