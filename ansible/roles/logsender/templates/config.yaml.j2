@@ -11,7 +11,7 @@ keep: {{ item['keep'] | default(false) }}
 debug: {{ item['debug'] | default(false) }}
 wait_time: {{ item['logsender_wait_time'] | default(120) }}
 insecure: {{ item['es_insecure'] | default(false) }}
-ca_file: {{ item['custom_ca_crt'] | default('') }}
+ca_file: {{ item['logsender_custom_ca_crt'] | default('') }}
 follow: {{ item['follow'] | default(true) }}
 workers: {{ item['logsender_workers'] | default(1) }}
 ignore_es_status: {{ item['ignore_es_status'] | default(false) }}

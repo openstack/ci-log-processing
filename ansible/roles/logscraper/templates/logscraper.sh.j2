@@ -8,8 +8,8 @@
     --uidmap 1000:{{ logscraper_uid }}:1 \
     --name logscraper-{{ item.tenant }} \
     --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
-    {% if 'custom_ca_crt' in item %}
-    --volume {{ item['custom_ca_crt'] }}:{{ item['custom_ca_crt'] }}:z \
+    {% if 'logscraper_custom_ca_crt' in item %}
+    --volume {{ item['logscraper_custom_ca_crt'] }}:{{ item['logscraper_custom_ca_crt'] }}:z \
     {% endif %}
     {% if 'download_dir' in item %}
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
