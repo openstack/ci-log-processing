@@ -44,8 +44,12 @@
       docker_images:
         - context: .
           repository: cilogprocessing/logscraper
+          tags:
+            &imagetag "{{ zuul.tag is defined | ternary([zuul.get('tag', '').split('.')[0], '.'.join(zuul.get('tag', '').split('.')[:2]), zuul.get('tag', '')], ['latest']) }}"
         - context: loggearman/
           repository: cilogprocessing/loggearman
+          tags:
+            *imagetag
 
 - job:
     name: ci-log-processing-upload-image
@@ -61,11 +65,11 @@
         - context: .
           repository: cilogprocessing/logscraper
           tags:
-            - "latest"
+            *imagetag
         - context: loggearman/
           repository: cilogprocessing/loggearman
           tags:
-            - "latest"
+            *imagetag
     dependencies:
       - name: openstack-tox-pep8
         soft: true
