@@ -44,10 +44,12 @@
       docker_images:
         - context: .
           repository: cilogprocessing/logscraper
+          target: logscraper
           tags:
             &imagetag "{{ zuul.tag is defined | ternary([zuul.get('tag', '').split('.')[0], '.'.join(zuul.get('tag', '').split('.')[:2]), zuul.get('tag', '')], ['latest']) }}"
         - context: loggearman/
           repository: cilogprocessing/loggearman
+          target: loggearman
           tags:
             *imagetag
 
@@ -60,16 +62,7 @@
       name: docker_credentials
       secret: cilogprocessing-docker
       pass-to-parent: true
-    vars:
-      docker_images:
-        - context: .
-          repository: cilogprocessing/logscraper
-          tags:
-            *imagetag
-        - context: loggearman/
-          repository: cilogprocessing/loggearman
-          tags:
-            *imagetag
+    vars: *cilogprocessing_image_vars
     dependencies:
       - name: openstack-tox-pep8
         soft: true

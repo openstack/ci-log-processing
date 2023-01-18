@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM quay.io/centos/centos:stream8
+FROM quay.io/centos/centos:stream8 as logscraper
 
 ENV PATH=/workspace/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LANG=en_US.UTF-8
