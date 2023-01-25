@@ -20,6 +20,7 @@ The goal is to get content from build uuid directory and send to Opensearch
 """
 
 import argparse
+import configparser
 import copy
 import datetime
 import itertools
@@ -32,14 +33,7 @@ import shutil
 import sys
 import time
 
-# FIXME: discover why stestr in tox env can not import base lib
-try:
-    from logscraper import get_config_args
-    from logscraper import parse_args
-except ImportError:
-    from logscraper.logscraper import get_config_args
-    from logscraper.logscraper import parse_args
-
+from ast import literal_eval
 from opensearchpy import exceptions as opensearch_exceptions
 from opensearchpy import helpers
 from opensearchpy import OpenSearch
@@ -63,31 +57,56 @@ def get_arguments():
     parser.add_argument("--port", help="Opensearch port", type=int)
     parser.add_argument("--username", help="Opensearch username")
     parser.add_argument("--password", help="Opensearch user password")
-    parser.add_argument("--index-prefix", help="Prefix for the index.")
+    parser.add_argument("--index-prefix", help="Prefix for the index.",
+                        default="logstash-")
     parser.add_argument("--index", help="Opensearch index")
     parser.add_argument("--performance-index-prefix", help="Prefix for the"
                         "index that will proceed performance.json file"
-                        "NOTE: it will use same opensearch user credentials")
+                        "NOTE: it will use same opensearch user credentials",
+                        default="performance-")
     parser.add_argument("--subunit-index-prefix", help="Prefix for the"
                         "index that will proceed testrepository.subunit file"
-                        "NOTE: it will use same opensearch user credentials")
+                        "NOTE: it will use same opensearch user credentials",
+                        default="subunit-")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
-                        action="store_false")
-    parser.add_argument("--follow", help="Keep sending CI logs", type=bool,
-                        default=True)
+                        action="store_true")
+    parser.add_argument("--follow", help="Keep sending CI logs",
+                        action="store_true")
     parser.add_argument("--workers", help="Worker processes for logsender",
                         type=int)
     parser.add_argument("--chunk-size", help="The bulk chunk size", type=int)
     parser.add_argument("--skip-debug", help="Skip messages that contain: "
-                        "DEBUG word", type=bool, default=True)
+                        "DEBUG word",
+                        action="store_true")
     parser.add_argument("--keep", help="Do not remove log directory after",
                         type=bool)
-    parser.add_argument("--debug", help="Be more verbose", type=bool,
-                        default=False)
+    parser.add_argument("--debug", help="Be more verbose",
+                        action="store_true")
     parser.add_argument("--wait-time", help="Pause time for the next "
                         "iteration", type=int)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
     args = parser.parse_args()
+
+    defaults = {}
+    if args.config:
+        config = configparser.ConfigParser(delimiters=('=', ':'))
+        config.read(args.config)
+        defaults = config["DEFAULT"]
+        defaults = dict(defaults)
+
+    parsed_values = {}
+    for k, v in defaults.items():
+        if not v:
+            continue
+        try:
+            parsed_values[k] = literal_eval(v)
+        except (SyntaxError, ValueError):
+            pass
+
+    parser.set_defaults(**defaults)
+    parser.set_defaults(**parsed_values)
+    args = parser.parse_args()
+
     return args
 
 
@@ -548,8 +567,8 @@ def get_es_client(args):
             "port": args.port,
             "http_compress": True,
             "use_ssl": True,
-            "verify_certs": args.insecure,
-            "ssl_show_warn": args.insecure,
+            "verify_certs": not args.insecure,
+            "ssl_show_warn": not args.insecure,
         }
 
     if args.username and args.password:
@@ -572,9 +591,7 @@ def run(args):
 
 
 def main():
-    app_args = get_arguments()
-    config_args = get_config_args(app_args.config)
-    args = parse_args(app_args, config_args)
+    args = get_arguments()
     setup_logging(args.debug)
     while True:
         run(args)

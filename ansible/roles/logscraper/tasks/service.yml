@@ -15,16 +15,21 @@
     mode: '0755'
   register: _start_script
 
-- name: Generate logscraper download file list
+- name: Generate logscraper config file
   template:
-    src: config.yaml.j2
-    dest: "{{ logscraper_dir }}/logscraper-{{ item.tenant }}.yaml"
+    src: config.j2
+    dest: "{{ logscraper_dir }}/logscraper-{{ item.tenant }}.config"
     owner: "{{ logscraper_user }}"
     group: "{{ logscraper_group }}"
     mode: '0644'
   register: _config_file
 
-- name: Copy logscraper config file
+- name: Delete old logscraper config file
+  file:
+    path: "{{ logscraper_dir }}/logscraper-{{ item.tenant }}.yaml"
+    state: absent
+
+- name: Generate logscraper download file list
   template:
     src: download-list.yaml.j2
     dest: "{{ logscraper_dir }}/download-list-{{ item.tenant }}.yaml"

@@ -59,6 +59,7 @@ end_time.
 
 
 import argparse
+import configparser
 import datetime
 import gear
 import itertools
@@ -73,6 +74,7 @@ import sys
 import time
 import yaml
 
+from ast import literal_eval
 from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion as s_version
 from prometheus_client import Gauge
@@ -110,6 +112,19 @@ def is_zuul_host_up(url, verify=True):
         pass
 
 
+def _verify_ca(args):
+    """Return path for CA cert file otherwise boolean value
+
+    When insecure argument is set to True, certification validation
+    needs to be False.
+    """
+
+    if args.ca_file:
+        return args.ca_file
+    else:
+        return not args.insecure
+
+
 ###############################################################################
 #                                    CLI                                      #
 ###############################################################################
@@ -120,16 +135,17 @@ def get_arguments():
                         required=True)
     parser.add_argument("--file-list", help="File list to download")
     parser.add_argument("--zuul-api-url", help="URL(s) for Zuul API. Parameter"
-                        " can be set multiple times.", action='append')
+                        " can be set multiple times.", nargs='+', default=[])
     parser.add_argument("--job-name", help="CI job name(s). Parameter can be "
                         "set multiple times. If not set it would scrape "
-                        "every latest builds.", action='append')
+                        "every latest builds", nargs='+', default=[])
     parser.add_argument("--gearman-server", help="Gearman host address")
-    parser.add_argument("--gearman-port", help="Gearman listen port.")
-    parser.add_argument("--follow", help="Keep polling zuul builds", type=bool,
-                        default=True)
+    parser.add_argument("--gearman-port", help="Gearman listen port.",
+                        type=int)
+    parser.add_argument("--follow", help="Keep polling zuul builds",
+                        action="store_true")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
-                        action="store_false")
+                        action="store_true")
     parser.add_argument("--checkpoint-file", help="File that will keep "
                         "information about last uuid timestamp for a job.")
     parser.add_argument("--logstash-url", help="When provided, script will "
@@ -140,51 +156,45 @@ def get_arguments():
                         type=int)
     parser.add_argument("--max-skipped", help="How many job results should be "
                         "checked until last uuid written in checkpoint file "
-                        "is founded")
-    parser.add_argument("--debug", help="Print more information", type=bool,
-                        default=False)
+                        "is founded",
+                        type=int)
+    parser.add_argument("--debug", help="Print more information",
+                        action="store_true")
     parser.add_argument("--download", help="Download logs and do not send "
-                        "to gearman service")
+                        "to gearman service",
+                        action="store_true")
     parser.add_argument("--directory", help="Directory, where the logs will "
                         "be stored.")
     parser.add_argument("--wait-time", help="Pause time for the next "
-                        "iteration", type=int)
+                        "iteration",
+                        type=int)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
     parser.add_argument("--monitoring-port", help="Expose an Prometheus "
                         "exporter to collect monitoring metrics."
-                        "NOTE: When no port set, monitoring will be disabled.",
-                        type=int)
+                        "NOTE: When no port set, monitoring will be disabled.")
     args = parser.parse_args()
+
+    defaults = {}
+    if args.config:
+        config = configparser.ConfigParser(delimiters=('=', ':'))
+        config.read(args.config)
+        defaults = config["DEFAULT"]
+        defaults = dict(defaults)
+
+    parsed_values = {}
+    for k, v in defaults.items():
+        if not v:
+            continue
+        try:
+            parsed_values[k] = literal_eval(v)
+        except (SyntaxError, ValueError):
+            pass
+
+    parser.set_defaults(**defaults)
+    parser.set_defaults(**parsed_values)
+    args = parser.parse_args()
+
     return args
-
-
-def get_config_args(config_path):
-    config_file = load_config(config_path)
-    if config_file:
-        return config_file
-
-
-def parse_args(app_args, config_args):
-    if not config_args:
-        logging.warning("Can not get information from config files")
-
-    if not config_args:
-        print("The config file is necessary to provide!")
-        sys.exit(1)
-
-    # NOTE: When insecure flag is set as an argument, the value is False,
-    # so if insecure is set to True in config file, it should also be False.
-    if not getattr(app_args, 'insecure') or (
-            'insecure' in config_args and config_args['insecure']):
-        setattr(app_args, 'insecure', False)
-
-    for k, v in config_args.items():
-        # Arguments provided via CLI should have higher priority than
-        # provided in config.
-        if getattr(app_args, k, None) is None:
-            setattr(app_args, k, v)
-
-    return app_args
 
 
 ###############################################################################
@@ -666,8 +676,10 @@ def run_build(build):
             logging.critical("Exception occurred %s on creating dir %s" % (
                 e, directory))
 
+        validate_ca = _verify_ca(args)
+
         if is_job_with_result(build):
-            check_specified_files(build, args.insecure, directory)
+            check_specified_files(build, validate_ca, directory)
         else:
             # NOTE: if build result is "ABORTED" or "NODE_FAILURE, there is
             # no any job result files to parse, but we would like to have that
@@ -684,8 +696,9 @@ def run_build(build):
         # NOTE: As it was earlier, logs that contains status other than
         # "SUCCESS" or "FAILURE" will be parsed by Gearman service.
         logging.debug("Parsing content for gearman service")
+        validate_ca = _verify_ca(args)
         results = dict(files=[], jobs=[], invocation={})
-        files = check_specified_files(build, args.insecure)
+        files = check_specified_files(build, validate_ca)
 
         results["files"] = files
         lmc = LogMatcher(
@@ -720,7 +733,8 @@ def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
     config = Config(args, zuul_api_url, job_name)
 
     builds = []
-    for build in get_last_job_results(zuul_api_url, args.insecure,
+    validate_ca = _verify_ca(args)
+    for build in get_last_job_results(zuul_api_url, validate_ca,
                                       args.max_skipped, config.build_cache,
                                       job_name):
         logging.debug("Working on build %s" % build['uuid'])
@@ -750,10 +764,7 @@ def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
 
 
 def run(args, monitoring):
-    if args.ca_file:
-        validate_ca = args.ca_file
-    else:
-        validate_ca = args.insecure
+    validate_ca = _verify_ca(args)
 
     for zuul_api_url in args.zuul_api_url:
 
@@ -779,10 +790,7 @@ def run(args, monitoring):
 
 
 def main():
-    app_args = get_arguments()
-    config_args = get_config_args(app_args.config)
-    args = parse_args(app_args, config_args)
-
+    args = get_arguments()
     setup_logging(args.debug)
 
     monitoring = None

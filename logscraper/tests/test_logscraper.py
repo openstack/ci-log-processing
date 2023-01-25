@@ -150,7 +150,7 @@ class FakeArgs(object):
                  logstash_url=None, workers=None, max_skipped=None,
                  job_name=None, download=None, directory=None,
                  config=None, wait_time=None, ca_file=None,
-                 file_list=None, monitoring_port=None):
+                 file_list=None, monitoring_port=None, debug=None):
 
         self.zuul_api_url = zuul_api_url
         self.gearman_server = gearman_server
@@ -170,6 +170,7 @@ class FakeArgs(object):
         self.ca_file = ca_file
         self.file_list = file_list
         self.monitoring_port = monitoring_port
+        self.debug = debug
 
 
 class TestScraper(base.TestCase):
@@ -182,6 +183,22 @@ class TestScraper(base.TestCase):
                 'tags': ['console', 'console.html']
             }]
         }
+
+    @mock.patch('argparse.ArgumentParser.parse_args')
+    def test_get_arguments(self, mock_args):
+        mock_args.return_value = FakeArgs(
+            zuul_api_url='somehost.com',
+            debug=True,
+            insecure=False,
+            config='/tmp/somefile.conf'
+        )
+        m = mock.mock_open(read_data="[DEFAULT]\ndebug: False\n"
+                           "insecure: True")
+        with mock.patch('builtins.open', m) as mocked_open:
+            args = logscraper.get_arguments()
+            self.assertEqual(True, args.debug)
+            self.assertEqual(False, args.insecure)
+            mocked_open.assert_called_once()
 
     def test_parse_version(self):
         ver1 = logscraper.parse_version('4.6.0-1.el7')

@@ -1,4 +1,4 @@
----
+[DEFAULT]
 zuul_api_url: {{ item['zuul_api_url'].split(', ') }}
 follow: {{ item['follow'] | default(true) }}
 checkpoint_file: {{ item['checkpoint_file'] | default(logscraper_dir + '/checkpoint') }}

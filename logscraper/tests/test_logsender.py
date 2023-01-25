@@ -304,6 +304,27 @@ class FakeArgs(object):
 
 class TestSender(base.TestCase):
 
+    @mock.patch('argparse.ArgumentParser.parse_args')
+    def test_get_arguments(self, mock_args):
+        mock_args.return_value = FakeArgs(
+            host='somehost.com',
+            debug=True,
+            insecure=False,
+            config='/tmp/somefile.conf',
+            port=9200,
+            subunit_index_prefix='test-'
+        )
+        m = mock.mock_open(read_data="[DEFAULT]\ndebug: False\n"
+                           "insecure: True\nport: 9000\n"
+                           "subunit_index_prefix: subunit-")
+        with mock.patch('builtins.open', m) as mocked_open:
+            args = logsender.get_arguments()
+            self.assertEqual(True, args.debug)
+            self.assertEqual(False, args.insecure)
+            self.assertEqual(9200, args.port)
+            self.assertEqual('test-', args.subunit_index_prefix)
+            mocked_open.assert_called_once()
+
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')

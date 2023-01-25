@@ -1,20 +1,20 @@
----
+[DEFAULT]
 directory: /tmp/logscraper
 host: localhost
 port: 9200
 username: logstash
-password: ""
-index_prefix: "logstash-"
-index: ""
+password:
+index_prefix: logstash-
+index:
 chunk_size: 1500
 skip_debug: true
 keep: false
 debug: false
 wait_time: 120
 insecure: false
-ca_file: ""
+ca_file:
 follow: true
 workers: 1
 file_list: logscraper/download-list.yaml.sample
-performance_index_prefix: ""
-subunit_index_prefix: ""
+performance_index_prefix: performance-
+subunit_index_prefix: subunit-

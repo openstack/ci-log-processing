@@ -57,7 +57,7 @@ def get_arguments():
                              default=os.path.dirname(
                                  os.path.realpath(__file__)))
     args_parser.add_argument('--no-resolve-conflicts',
-                             default=False,
+                             action="store_true",
                              help='Resolve conflicts by removing index '
                              'id reference in backup file')
     args_parser.add_argument('--overwrite-index-pattern',
@@ -65,7 +65,7 @@ def get_arguments():
                              help='WARNING: Use that option if you want'
                              'to restart also index pattern')
     args_parser.add_argument('--insecure',
-                             action='store_false',
+                             action='store_true',
                              help='Use that option to ignore if SSL cert '
                              'has been verified by root CA')
     args_parser.add_argument('--tenant',
@@ -90,8 +90,7 @@ def get_arguments():
     args_parser.add_argument('--ca-file',
                              help='Custom CA certificate file')
     args_parser.add_argument("--debug", help="Print more information",
-                             type=bool,
-                             default=False)
+                             action="store_true")
     return args_parser.parse_args()
 
 

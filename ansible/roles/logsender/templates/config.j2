@@ -1,4 +1,4 @@
----
+[DEFAULT]
 host: {{ item['es_host'] | default('localhost') }}
 port: {{ item['es_port'] | default(9200) }}
 username: {{ item['es_username'] | default('logstash') }}
