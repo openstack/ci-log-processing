@@ -1,0 +1,160 @@
+---
+# Opensearch Dashboards
+- name: Setup Opensearch Dashboards
+  shell: >
+    podman run -d --name opensearch-dashboards
+    --network host
+    -e "OPENSEARCH_HOST=https://127.0.0.1:9200"
+    quay.io/software-factory/opensearch-dashboards:1.1.0
+
+- name: Wait for Opensearch Dashboards to be up
+  wait_for:
+    host: 127.0.0.1
+    port: 5601
+    delay: 10
+    timeout: 300
+
+- name: Ensure Opensearch Dashboards to be up
+  uri:
+    url: "http://0.0.0.0:5601/app/login"
+    user: "admin"
+    password: "admin"
+    force_basic_auth: true
+    method: GET
+    status_code: "200"
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+
+# Restore Openstack Opensearch Dashboards Objects
+- name: Set Dashboards backup directory
+  set_fact:
+    original_backup_dir: "{{ ansible_user_dir + '/' + zuul.project.src_dir | default('~/ci-log-processing') }}/opensearch-dashboards-objects"
+
+- name: Get backup files to restore
+  shell: |
+    ls {{ original_backup_dir }}
+  register: _backup_files
+
+- name: Run restore backup files as privileged user
+  shell: >
+    podman run --rm -v {{ original_backup_dir }}:{{ original_backup_dir }}:z
+    --network host
+    {{ container_images.logscraper | default('quay.io/logscraper:dev') }}
+    opensearch_dashboards_backup
+    restore
+    --dashboard-api-url http://127.0.0.1:5601
+    --tenant global
+    --user 'admin' --password 'admin'
+    --file {{ original_backup_dir }}/{{ item }}
+    --host 127.0.0.1 --port 9200
+    --insecure
+  loop: "{{ _backup_files.stdout_lines }}"
+
+- name: Run restore backup files as non privileged user
+  shell: >
+    podman run --rm -v {{ original_backup_dir }}:{{ original_backup_dir }}:z
+    --network host
+    {{ container_images.logscraper | default('quay.io/logscraper:dev') }}
+    opensearch_dashboards_backup
+    restore
+    --dashboard-api-url http://127.0.0.1:5601
+    --tenant global
+    --user 'kibanaro' --password 'kibanaro'
+    --file {{ original_backup_dir }}/{{ item }}
+    --host 127.0.0.1 --port 9200
+    --insecure
+  loop: "{{ _backup_files.stdout_lines }}"
+  register: _ro_user_restore
+  failed_when: _ro_user_restore.rc == 0
+
+# Backup
+# NOTE: Set owner and group like it is set in the container image.
+- name: Create backup directory
+  become: true
+  file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: "1000"
+    group: "1000"
+
+- name: Create backup as readonly user
+  shell: >
+    podman run --rm -v {{ backup_dir }}:{{ backup_dir }}:z
+    --network host
+    {{ container_images.logscraper | default('quay.io/logscraper:dev') }}
+    opensearch_dashboards_backup
+    backup
+    --dashboard-api-url http://127.0.0.1:5601
+    --tenant global
+    --user 'kibanaro' --password 'kibanaro'
+    --backup-dir {{ backup_dir }}
+    --insecure
+
+# Check new backup files
+- name: Get content of new backup - index pattern
+  command: |
+    cat {{ backup_dir }}/index-pattern-global.yaml
+  register: index_pattern_new
+
+- name: Get content of new backup - dashboard
+  command: |
+    cat {{ backup_dir }}/dashboard-global.yaml
+  register: dashboard_new
+
+- name: Get content of new backup - visualization
+  command: |
+    cat {{ backup_dir }}/visualization-global.yaml
+  register: visualization_new
+
+- name: Fail if there are not required words in new backup
+  fail:
+    msg: "New backup file can be broken!"
+  when:
+    - "'dashboard' not in dashboard_new.stdout"
+    - "'visualization' not in visualization_new.stdout"
+    - "'index' not in index_pattern_new.stdout"
+
+# Ensure that new backup files can be restored
+# TODO: remove old objects before restore
+- name: Set Dashboards backup directory
+  set_fact:
+    original_backup_dir: "{{ backup_dir }}"
+
+- name: Get backup files to restore
+  shell: |
+    ls {{ original_backup_dir }}
+  register: _backup_files
+
+- name: Run restore backup files as privileged user
+  shell: >
+    podman run --rm -v {{ original_backup_dir }}:{{ original_backup_dir }}:z
+    --network host
+    {{ container_images.logscraper | default('quay.io/logscraper:dev') }}
+    opensearch_dashboards_backup
+    restore
+    --dashboard-api-url http://127.0.0.1:5601
+    --tenant global
+    --user 'admin' --password 'admin'
+    --file {{ original_backup_dir }}/{{ item }}
+    --host 127.0.0.1 --port 9200
+    --insecure
+  loop: "{{ _backup_files.stdout_lines }}"
+
+- name: Run restore backup files as non privileged user
+  shell: >
+    podman run --rm -v {{ original_backup_dir }}:{{ original_backup_dir }}:z
+    --network host
+    {{ container_images.logscraper | default('quay.io/logscraper:dev') }}
+    opensearch_dashboards_backup
+    restore
+    --dashboard-api-url http://127.0.0.1:5601
+    --tenant global
+    --user 'kibanaro' --password 'kibanaro'
+    --file {{ original_backup_dir }}/{{ item }}
+    --host 127.0.0.1 --port 9200
+    --insecure
+  loop: "{{ _backup_files.stdout_lines }}"
+  register: _ro_user_restore
+  failed_when: _ro_user_restore.rc == 0

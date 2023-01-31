@@ -22,6 +22,11 @@ Elasticsearch service.
 NOTE: build directories that does not provide files `buildinfo`
 and `inventory.yaml` file are skipped.
 
+Opensearch Dashboards Backup
+----------------------------
+
+The OpenSearch Dashboards Backup script helps to create OpenSearch
+Dashboards objects versioning.
 
 Available workflows
 -------------------

@@ -31,3 +31,4 @@
         state: latest
   roles:
     - check-services
+    - backup-dashboards-objects
