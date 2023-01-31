@@ -734,6 +734,27 @@ class TestLogMatcher(base.TestCase):
                 json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
             )
 
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    @mock.patch('os.path.isfile')
+    @mock.patch('requests.get')
+    def test_ensure_file_downloaded(self, mock_requests, mock_is_file,
+                                    mock_open):
+        url = 'http://someurl.com'
+        directory = '/tmp/logscraper'
+        mock_is_file.return_value = False
+        logscraper.ensure_file_downloaded(url, directory)
+        assert mock_requests.called
+
+    @mock.patch('os.path.isfile')
+    @mock.patch('requests.get')
+    def test_ensure_file_downloaded_file_exists(self, mock_requests,
+                                                mock_is_file):
+        url = 'http://someurl.com'
+        directory = '/tmp/logscraper'
+        mock_is_file.return_value = True
+        logscraper.ensure_file_downloaded(url, directory)
+        assert not mock_requests.called
+
 
 class TestBuildCache(base.TestCase):
 

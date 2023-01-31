@@ -506,17 +506,39 @@ def get_files_to_check(config):
     return files
 
 
+def _is_file_available(response):
+    logging.debug("File from url: %s got response status: %s" % (
+        response.url, response.status_code))
+    return response.ok
+
+
+def write_response_in_file(response, directory, filename):
+    if _is_file_available(response):
+        with open("%s/%s" % (directory, filename), 'wb') as f:
+            for txt in response.iter_content(1024):
+                f.write(txt)
+
+
+def ensure_file_downloaded(url, directory, insecure=False):
+    # NOTE: There was few directories, that it does not contain
+    # inventory.yaml file. Retry few times download that file.
+    filename = url.split("/")[-1]
+    if directory:
+        if os.path.isfile("%s/%s" % (directory, filename)):
+            return
+
+        response = requests_get(url, verify=True)
+        write_response_in_file(response, directory, filename)
+
+
 def download_file(url, directory, insecure=False):
     logging.debug("Started fetching %s" % url)
     filename = url.split("/")[-1]
     try:
         response = requests.get(url, verify=insecure, stream=True)
-        if response.status_code == 200:
-            if directory:
-                with open("%s/%s" % (directory, filename), 'wb') as f:
-                    for txt in response.iter_content(1024):
-                        f.write(txt)
-            return filename
+        if directory:
+            write_response_in_file(response, directory, filename)
+        return filename
     except requests.exceptions.ContentDecodingError:
         logging.critical("Can not decode content from %s" % url)
 
@@ -585,6 +607,9 @@ def check_specified_files(job_result, insecure, directory=None):
     build_log_urls = [
         urljoin(job_result["log_url"], s) for s in filtered_files
     ]
+    inventory_urls = [
+        urljoin(job_result["log_url"], "zuul-info/inventory.yaml")
+    ]
 
     results = []
     pool = ThreadPoolExecutor(max_workers=args.workers)
@@ -593,6 +618,9 @@ def check_specified_files(job_result, insecure, directory=None):
                          itertools.repeat(insecure)):
         if page:
             results.append(page)
+
+    pool.map(ensure_file_downloaded, inventory_urls,
+             itertools.repeat(directory), itertools.repeat(insecure))
 
     return results
 
