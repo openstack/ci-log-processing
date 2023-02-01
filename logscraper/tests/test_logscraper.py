@@ -150,7 +150,8 @@ class FakeArgs(object):
                  logstash_url=None, workers=None, max_skipped=None,
                  job_name=None, download=None, directory=None,
                  config=None, wait_time=None, ca_file=None,
-                 file_list=None, monitoring_port=None, debug=None):
+                 file_list=None, monitoring_port=None, debug=None,
+                 timeout=None):
 
         self.zuul_api_url = zuul_api_url
         self.gearman_server = gearman_server
@@ -171,6 +172,7 @@ class FakeArgs(object):
         self.file_list = file_list
         self.monitoring_port = monitoring_port
         self.debug = debug
+        self.timeout = timeout
 
 
 class TestScraper(base.TestCase):
@@ -230,7 +232,7 @@ class TestScraper(base.TestCase):
         mock_requests.return_value.json.return_value = example_jobs
         job_names = ['openstack-tox-py38']
         result = logscraper.filter_available_jobs(
-            'http://somehost.com/api/tenant/tenant1', job_names, False)
+            'http://somehost.com/api/tenant/tenant1', job_names, False, 10)
         self.assertEqual(['openstack-tox-py38'], result)
 
     @mock.patch('requests.get')
@@ -289,7 +291,7 @@ class TestScraper(base.TestCase):
         some_config = logscraper.Config(args, args.zuul_api_url)
         job_result = logscraper.get_last_job_results(
             'http://somehost.com/api/tenant/tenant1', False, '1234',
-            some_config.build_cache, None)
+            some_config.build_cache, None, 10)
         self.assertEqual([{'_id': '1234'}], list(job_result))
         self.assertEqual(1, mock_get_builds.call_count)
 
@@ -301,7 +303,7 @@ class TestScraper(base.TestCase):
 
         job_result = logscraper.get_last_job_results(
             'http://somehost.com/api/tenant/tenant1', False, 'somevalue',
-            'someuuid', None)
+            'someuuid', None, 10)
         self.assertRaises(ValueError, make_fake_list, job_result)
 
     @mock.patch('logscraper.logscraper.load_config')
@@ -522,7 +524,8 @@ class TestScraper(base.TestCase):
         config_files = ['job-results.txt',
                         'zuul/logs/zuul/logs/compute/text.txt',
                         'zuul/logs/test.txt']
-        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False,
+                                                 10)
         self.assertListEqual(config_files, files)
 
     @mock.patch('requests.head')
@@ -533,7 +536,8 @@ class TestScraper(base.TestCase):
         config_files = ['job-results.txt',
                         'zuul/logs/zuul/logs/compute/text.txt',
                         'zuul/logs/test.txt']
-        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False,
+                                                 10)
         self.assertListEqual(['job-results.txt'], files)
 
     @mock.patch('requests.head')
@@ -544,7 +548,8 @@ class TestScraper(base.TestCase):
         config_files = ['job-results.txt',
                         'compute/logs/atest.txt',
                         'zuul/logs/test.txt']
-        files = logscraper.cleanup_logs_to_check(config_files, log_url, False)
+        files = logscraper.cleanup_logs_to_check(config_files, log_url, False,
+                                                 10)
         self.assertEqual(2, len(files))
 
 
@@ -759,7 +764,7 @@ class TestLogMatcher(base.TestCase):
         url = 'http://someurl.com'
         directory = '/tmp/logscraper'
         mock_is_file.return_value = False
-        logscraper.ensure_file_downloaded(url, directory)
+        logscraper.ensure_file_downloaded(url, directory, False, 10)
         assert mock_requests.called
 
     @mock.patch('os.path.isfile')
@@ -769,7 +774,7 @@ class TestLogMatcher(base.TestCase):
         url = 'http://someurl.com'
         directory = '/tmp/logscraper'
         mock_is_file.return_value = True
-        logscraper.ensure_file_downloaded(url, directory)
+        logscraper.ensure_file_downloaded(url, directory, False, 10)
         assert not mock_requests.called
 
 
