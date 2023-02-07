@@ -6,7 +6,8 @@
     # logscraper and logsender
     tenant_builds:
       - tenant: openstack
-        zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+        zuul_api_url:
+          - https://zuul.opendev.org/api/tenant/openstack
         download: true
         download_dir: /mnt/logscraper/openstack
         es_username: logstash

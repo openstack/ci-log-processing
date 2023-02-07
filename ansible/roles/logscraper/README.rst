@@ -25,7 +25,8 @@ for example:
       - tenant: openstack
         gearman_port: 4731
         gearman_server: logstash.openstack.org
-        zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+        zuul_api_url:
+          - https://zuul.opendev.org/api/tenant/openstack
         insecure: false
 
 will deploy service with name: `logscraper@openstack.service`.
@@ -57,10 +58,12 @@ and second one for getting logs from `sometenant` tenant.
         - tenant: openstack
           gearman_port: 4731
           gearman_server: logstash.openstack.org
-          zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+          zuul_api_url:
+            - https://zuul.opendev.org/api/tenant/openstack
           insecure: False
         - tenant: sometenant
-          zuul_api_url: https://zuul.opendev.org/api/tenant/sometenant
+          zuul_api_url:
+            - https://zuul.opendev.org/api/tenant/sometenant
           insecure: True
           download: true
           download_dir: /mnt/logscraper

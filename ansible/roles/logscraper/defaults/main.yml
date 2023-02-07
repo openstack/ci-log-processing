@@ -14,11 +14,13 @@ container_images:
 #   - tenant: openstack
 #     gearman_port: 4731
 #     gearman_server: logstash.openstack.org
-#     zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
+#     zuul_api_url:
+#       - https://zuul.opendev.org/api/tenant/openstack
 #     insecure: false
 #     logscraper_workers: 1
 #   - tenant: sometenant
-#     zuul_api_url: https://zuul.opendev.org/api/tenant/sometenant
+#     zuul_api_url:
+#       - https://zuul.opendev.org/api/tenant/sometenant
 #     insecure: true
 #     download: true
 #     download_dir: /mnt/logscraper/sometenant

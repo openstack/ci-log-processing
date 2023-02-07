@@ -1,5 +1,5 @@
 [DEFAULT]
-zuul_api_url: {{ item['zuul_api_url'].split(', ') }}
+zuul_api_url: {{ item['zuul_api_url'] | list }}
 follow: {{ item['follow'] | default(true) }}
 checkpoint_file: {{ item['checkpoint_file'] | default(logscraper_dir + '/checkpoint') }}
 workers: {{ item['logscraper_workers'] | default(1) }}

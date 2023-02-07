@@ -17,8 +17,7 @@
       - tenant: openstack
         gearman_port: "{{ gearman_port }}"
         gearman_server: "{{ gearman_host }}"
-        zuul_api_url: https://zuul.opendev.org/api/tenant/openstack
-        zuul_api_urls:
+        zuul_api_url:
           - https://zuul.opendev.org/api/tenant/openstack
         insecure: false
         job_names: []
