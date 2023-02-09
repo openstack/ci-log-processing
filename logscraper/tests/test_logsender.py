@@ -1139,7 +1139,7 @@ class TestSubunit(base.TestCase):
                 'setUpClass (neutron_tempest_plugin.scenario.'
                 'test_dns_integration.'
                 'DNSIntegrationDomainPerProjectTests)',
-            'test_duration': '0.0',
+            'test_duration': 0.0,
             'test_status': 'skip',
             '@timestamp': '2022-09-21T08:10:06Z'
         })
@@ -1150,7 +1150,7 @@ class TestSubunit(base.TestCase):
                 'neutron_tempest_plugin.scenario.test_dns_integration.'
                 'DNSIntegrationAdminTests.'
                 'test_fip_admin_delete',
-            'test_duration': '7.103220',
+            'test_duration': 7.103220,
             'test_status': 'success',
             '@timestamp': '2022-09-21T08:10:20Z'
         })
@@ -1161,7 +1161,7 @@ class TestSubunit(base.TestCase):
                 'neutron_tempest_plugin.scenario.test_dns_integration.'
                 'DNSIntegrationExtraTests.'
                 'test_port_with_publishing_subnet',
-            'test_duration': '9.188214',
+            'test_duration': 9.188214,
             'test_status': 'success',
             '@timestamp': '2022-09-21T08:10:20Z'
         })
@@ -1172,7 +1172,7 @@ class TestSubunit(base.TestCase):
                 'neutron_tempest_plugin.scenario.test_dns_integration.'
                 'DNSIntegrationTests.'
                 'test_fip',
-            'test_duration': '6.738004',
+            'test_duration': 6.738004,
             'test_status': 'success',
             '@timestamp': '2022-09-21T08:10:23Z'
         })
@@ -1183,7 +1183,7 @@ class TestSubunit(base.TestCase):
                 'neutron_tempest_plugin.scenario.test_dns_integration.'
                 'DNSIntegrationAdminTests.'
                 'test_port_on_special_network',
-            'test_duration': '6.611149',
+            'test_duration': 6.611149,
             'test_status': 'success',
             '@timestamp': '2022-09-21T08:10:27Z'
         })
@@ -1194,7 +1194,7 @@ class TestSubunit(base.TestCase):
                 'neutron_tempest_plugin.scenario.test_dns_integration.'
                 'DNSIntegrationTests.'
                 'test_server_with_fip',
-            'test_duration': '30.278503',
+            'test_duration': 30.278503,
             'test_status': 'success',
             '@timestamp': '2022-09-21T08:10:30Z'
         })
