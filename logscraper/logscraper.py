@@ -71,6 +71,7 @@ import requests
 import socket
 import sqlite3
 import sys
+import tenacity
 import time
 import yaml
 
@@ -79,7 +80,6 @@ from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion as s_version
 from prometheus_client import Gauge
 from prometheus_client import start_http_server
-import tenacity
 from urllib.parse import urljoin
 
 
@@ -94,19 +94,19 @@ retry_request = tenacity.retry(
 
 
 @retry_request
-def requests_get(url, verify=True):
-    return requests.get(url, verify=verify)
+def requests_get(url, verify, timeout):
+    return requests.get(url, verify=verify, timeout=timeout)
 
 
-def requests_get_json(url, verify=True):
-    resp = requests_get(url, verify)
+def requests_get_json(url, verify, timeout):
+    resp = requests_get(url, verify, timeout)
     resp.raise_for_status()
     return resp.json()
 
 
-def is_zuul_host_up(url, verify=True):
+def is_zuul_host_up(url, verify, timeout):
     try:
-        resp = requests_get(url, verify)
+        resp = requests_get(url, verify, timeout)
         return resp.status_code < 400
     except requests.exceptions.HTTPError:
         pass
@@ -167,11 +167,17 @@ def get_arguments():
                         "be stored.")
     parser.add_argument("--wait-time", help="Pause time for the next "
                         "iteration",
-                        type=int)
+                        type=int,
+                        default=120)
     parser.add_argument("--ca-file", help="Provide custom CA certificate")
     parser.add_argument("--monitoring-port", help="Expose an Prometheus "
                         "exporter to collect monitoring metrics."
                         "NOTE: When no port set, monitoring will be disabled.")
+    parser.add_argument("--timeout", help="Time after which the connection is "
+                        "terminated if there is no answer from the Zuul or "
+                        "log server",
+                        type=int,
+                        default=300)
     args = parser.parse_args()
 
     defaults = {}
@@ -411,25 +417,25 @@ def parse_version(zuul_version_txt):
         raise ValueError("Invalid zuul version: %s" % zuul_version_txt)
 
 
-def _zuul_complete_available(zuul_url, insecure):
+def _zuul_complete_available(zuul_url, insecure, timeout):
     """Return additional parameter for zuul url
 
     When Zuul version is newer that 4.7.0, return additional
     parameter.
     """
     url = zuul_url + "/status"
-    zuul_status = requests_get_json(url, verify=insecure)
+    zuul_status = requests_get_json(url, insecure, timeout)
     zuul_version = parse_version(zuul_status.get("zuul_version"))
     if zuul_version and zuul_version >= s_version("4.7.0"):
         return "&complete=true"
 
 
-def get_builds(zuul_url, insecure, job_name):
+def get_builds(zuul_url, insecure, job_name, timeout):
     """Yield builds dictionary."""
     extra = ("&job_name=" + job_name) if job_name else ""
     pos, size = 0, 100
     zuul_url = zuul_url.rstrip("/")
-    zuul_complete = _zuul_complete_available(zuul_url, insecure)
+    zuul_complete = _zuul_complete_available(zuul_url, insecure, timeout)
     if zuul_complete:
         extra = extra + zuul_complete
     base_url = zuul_url + "/builds?limit=" + str(size) + extra
@@ -438,7 +444,7 @@ def get_builds(zuul_url, insecure, job_name):
     while True:
         url = base_url + "&skip=" + str(pos)
         logging.info("Getting job results %s", url)
-        jobs_result = requests_get_json(url, verify=insecure)
+        jobs_result = requests_get_json(url, insecure, timeout)
 
         if not jobs_result:
             return iter([])
@@ -453,11 +459,11 @@ def get_builds(zuul_url, insecure, job_name):
             pos += 1
 
 
-def filter_available_jobs(zuul_api_url, job_names, insecure):
+def filter_available_jobs(zuul_api_url, job_names, insecure, timeout):
     filtered_jobs = []
     url = zuul_api_url + "/jobs"
     logging.info("Getting available jobs %s", url)
-    available_jobs = requests_get_json(url, verify=insecure)
+    available_jobs = requests_get_json(url, insecure, timeout)
     if not available_jobs:
         return []
     for defined_job in job_names:
@@ -468,10 +474,10 @@ def filter_available_jobs(zuul_api_url, job_names, insecure):
 
 
 def get_last_job_results(zuul_url, insecure, max_builds, build_cache,
-                         job_name):
+                         job_name, timeout):
     """Yield builds until we find the last uuid."""
     count = 0
-    for build in get_builds(zuul_url, insecure, job_name):
+    for build in get_builds(zuul_url, insecure, job_name, timeout):
         count += 1
         if count > int(max_builds):
             break
@@ -529,7 +535,7 @@ def write_response_in_file(response, directory, filename):
                 f.write(txt)
 
 
-def ensure_file_downloaded(url, directory, insecure=False):
+def ensure_file_downloaded(url, directory, insecure, timeout):
     # NOTE: There was few directories, that it does not contain
     # inventory.yaml file. Retry few times download that file.
     filename = url.split("/")[-1]
@@ -537,15 +543,16 @@ def ensure_file_downloaded(url, directory, insecure=False):
         if os.path.isfile("%s/%s" % (directory, filename)):
             return
 
-        response = requests_get(url, verify=True)
+        response = requests_get(url, insecure, timeout)
         write_response_in_file(response, directory, filename)
 
 
-def download_file(url, directory, insecure=False):
+def download_file(url, directory, insecure, timeout):
     logging.debug("Started fetching %s" % url)
     filename = url.split("/")[-1]
     try:
-        response = requests.get(url, verify=insecure, stream=True)
+        response = requests.get(url, verify=insecure, stream=True,
+                                timeout=timeout)
         if directory:
             write_response_in_file(response, directory, filename)
         return filename
@@ -570,7 +577,7 @@ def create_custom_result(job_result, directory):
         logging.critical("Can not write custom-job-results.txt %s" % e)
 
 
-def cleanup_logs_to_check(config_files, log_url, insecure):
+def cleanup_logs_to_check(config_files, log_url, insecure, timeout):
     """Check if on logserver exists main directory"""
     filtered_config_files = []
     existing_dirs = []
@@ -585,7 +592,7 @@ def cleanup_logs_to_check(config_files, log_url, insecure):
         if not directory:
             continue
         url = '%s%s' % (log_url, directory)
-        response = requests.head(url, verify=insecure)
+        response = requests.head(url, verify=insecure, timeout=timeout)
         if response.ok:
             existing_dirs.append(directory)
 
@@ -597,7 +604,7 @@ def cleanup_logs_to_check(config_files, log_url, insecure):
     return filtered_config_files
 
 
-def check_specified_files(job_result, insecure, directory=None):
+def check_specified_files(job_result, insecure, timeout, directory=None):
     """Return list of specified files if they exists on logserver."""
 
     args = job_result.get("build_args")
@@ -609,7 +616,7 @@ def check_specified_files(job_result, insecure, directory=None):
         return
 
     filtered_files = cleanup_logs_to_check(check_files, job_result["log_url"],
-                                           insecure)
+                                           insecure, timeout)
 
     logging.debug("After filtering, files to check are: %s for job "
                   "result %s" % (filtered_files, job_result['uuid']))
@@ -625,12 +632,14 @@ def check_specified_files(job_result, insecure, directory=None):
     pool = ThreadPoolExecutor(max_workers=args.workers)
     for page in pool.map(download_file, build_log_urls,
                          itertools.repeat(directory),
-                         itertools.repeat(insecure)):
+                         itertools.repeat(insecure),
+                         itertools.repeat(timeout)):
         if page:
             results.append(page)
 
     pool.map(ensure_file_downloaded, inventory_urls,
-             itertools.repeat(directory), itertools.repeat(insecure))
+             itertools.repeat(directory), itertools.repeat(insecure),
+             itertools.repeat(timeout))
 
     return results
 
@@ -679,7 +688,7 @@ def run_build(build):
         validate_ca = _verify_ca(args)
 
         if is_job_with_result(build):
-            check_specified_files(build, validate_ca, directory)
+            check_specified_files(build, validate_ca, args.timeout, directory)
         else:
             # NOTE: if build result is "ABORTED" or "NODE_FAILURE, there is
             # no any job result files to parse, but we would like to have that
@@ -698,7 +707,7 @@ def run_build(build):
         logging.debug("Parsing content for gearman service")
         validate_ca = _verify_ca(args)
         results = dict(files=[], jobs=[], invocation={})
-        files = check_specified_files(build, validate_ca)
+        files = check_specified_files(build, validate_ca, args.timeout)
 
         results["files"] = files
         lmc = LogMatcher(
@@ -736,7 +745,7 @@ def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
     validate_ca = _verify_ca(args)
     for build in get_last_job_results(zuul_api_url, validate_ca,
                                       args.max_skipped, config.build_cache,
-                                      job_name):
+                                      job_name, args.timeout):
         logging.debug("Working on build %s" % build['uuid'])
         # add missing information
         build["tenant"] = config.tenant
@@ -768,14 +777,14 @@ def run(args, monitoring):
 
     for zuul_api_url in args.zuul_api_url:
 
-        if not is_zuul_host_up(zuul_api_url, validate_ca):
+        if not is_zuul_host_up(zuul_api_url, validate_ca, args.timeout):
             logging.warning("Zuul %s seems not to be reachable. "
                             "Postponing pulling logs..." % zuul_api_url)
             continue
 
         if args.job_name:
             jobs_in_zuul = filter_available_jobs(zuul_api_url, args.job_name,
-                                                 validate_ca)
+                                                 validate_ca, args.timeout)
             logging.info("Available jobs for %s are %s" % (
                 zuul_api_url, jobs_in_zuul))
             for job_name in jobs_in_zuul:

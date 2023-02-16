@@ -34,4 +34,5 @@ container_images:
 #     logscraper_wait_time: 120
 #     logscraper_custom_ca_crt: ""
 #     monitoring_port: ""
+#     timeout: 300
 tenant_builds: []
