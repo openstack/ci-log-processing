@@ -172,13 +172,16 @@ def get_ready_directories(directory):
 
 def get_hosts_id(build_inventory):
     hosts_id = []
+    hosts_region = []
     if 'all' not in build_inventory:
         return hosts_id
 
     for _, host_info in build_inventory['all']['hosts'].items():
         if 'host_id' in host_info.get('nodepool', {}):
             hosts_id.append(host_info['nodepool']['host_id'])
-    return hosts_id
+            hosts_region.append("%s-%s" % (host_info['nodepool']['cloud'],
+                                           host_info['nodepool']['region']))
+    return hosts_id, list(set(hosts_region))
 
 
 def remove_directory(dir_path):
@@ -212,7 +215,7 @@ def makeFields(build_inventory, buildinfo):
     fields["node_provider"] = "local"
     fields["log_url"] = buildinfo.get("log_url")
     fields["tenant"] = buildinfo.get("tenant")
-    fields["hosts_id"] = get_hosts_id(build_inventory)
+    fields["hosts_id"], fields["hosts_region"] = get_hosts_id(build_inventory)
     if "executor" in build_details and "hostname" in build_details["executor"]:
         fields["zuul_executor"] = build_details["executor"]["hostname"]
     return fields

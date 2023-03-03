@@ -561,7 +561,7 @@ def download_file(url, directory, insecure, timeout):
 
 
 def is_job_with_result(job_result):
-    results_with_status = ['failure', 'success']
+    results_with_status = ['failure', 'success', 'timed_out']
     if (job_result["result"].lower() in results_with_status and
             job_result["log_url"]):
         return True

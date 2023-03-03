@@ -244,6 +244,7 @@ parsed_fields = {
     'build_newrev': 'UNKNOWN',
     'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
     'node_provider': 'local',
+    'hosts_region': ['rax-DFW'],
     'hosts_id': ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
     'log_url':
     'https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/',
@@ -357,6 +358,7 @@ class TestSender(base.TestCase):
                 'build_patchset': '3', 'build_newrev': 'UNKNOWN',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
                 'node_provider': 'local',
+                'hosts_region': ['rax-DFW'],
                 'hosts_id': [
                     'ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'
                     ],
@@ -453,6 +455,7 @@ class TestSender(base.TestCase):
                 'build_patchset': '3', 'build_newrev': 'UNKNOWN',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
                 'node_provider': 'local',
+                'hosts_region': ['rax-DFW'],
                 'hosts_id': [
                     'ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'
                     ],
@@ -711,6 +714,7 @@ class TestSender(base.TestCase):
                 'db_nova_cell1_update': 12,
                 'db_placement_select': 4,
                 'hostname': 'ubuntu-focal-ovh-gra1-0029678038',
+                'hosts_region': ['rax-DFW'],
                 'hosts_id':
                 ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
                 'log_url':
