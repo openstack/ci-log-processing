@@ -387,7 +387,7 @@ def subunit_iter(file_name, index, es_fields):
         fields = copy.deepcopy(es_fields)
 
         fields["test_name"] = test_name
-        fields["test_duration"] = test_duration
+        fields["test_duration"] = float(test_duration)
         fields["test_status"] = parsed_subunit[test_name]["status"]
         fields["@timestamp"] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
 
