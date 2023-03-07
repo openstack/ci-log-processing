@@ -560,13 +560,6 @@ def download_file(url, directory, insecure, timeout):
         logging.critical("Can not decode content from %s" % url)
 
 
-def is_job_with_result(job_result):
-    results_with_status = ['failure', 'success', 'timed_out']
-    if (job_result["result"].lower() in results_with_status and
-            job_result["log_url"]):
-        return True
-
-
 def create_custom_result(job_result, directory):
     try:
         with open("%s/custom-job-results.txt" % directory, "w") as f:
@@ -687,11 +680,11 @@ def run_build(build):
 
         validate_ca = _verify_ca(args)
 
-        if is_job_with_result(build):
+        if 'log_url' in build and build["log_url"]:
             check_specified_files(build, validate_ca, args.timeout, directory)
         else:
-            # NOTE: if build result is "ABORTED" or "NODE_FAILURE, there is
-            # no any job result files to parse, but we would like to have that
+            # NOTE: if build result does not contain 'log_url', so there is
+            # no result files to parse, but we would like to have that
             # knowledge, so it will create own job-results.txt file that
             # contains:
             # build["end_time"] | build["result"]

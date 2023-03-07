@@ -440,7 +440,7 @@ class TestScraper(base.TestCase):
                     workers=1, download=True, directory="/tmp/testdir"))
     def test_run_aborted_download(self, mock_args, mock_gear, mock_gear_client,
                                   mock_check_files, mock_custom_result):
-        # Take job result that build_status is "ABORTED" or "NODE_FAILURE"
+        # Take job result that log_url is empty.
         result = builds_result[2]
         result['files'] = ['job-output.txt']
         result['tenant'] = 'sometenant'
