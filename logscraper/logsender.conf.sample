@@ -7,13 +7,13 @@ password:
 index_prefix: logstash-
 index:
 chunk_size: 1500
-skip_debug: true
-keep: false
-debug: false
+skip_debug: True
+keep: False
+debug: False
 wait_time: 120
-insecure: false
+insecure: False
 ca_file:
-follow: true
+follow: True
 workers: 1
 file_list: logscraper/download-list.yaml.sample
 performance_index_prefix: performance-

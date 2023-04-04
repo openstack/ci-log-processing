@@ -79,7 +79,7 @@ def get_arguments():
                         "DEBUG word",
                         action="store_true")
     parser.add_argument("--keep", help="Do not remove log directory after",
-                        type=bool)
+                        action="store_true")
     parser.add_argument("--debug", help="Be more verbose",
                         action="store_true")
     parser.add_argument("--wait-time", help="Pause time for the next "
@@ -174,7 +174,7 @@ def get_hosts_id(build_inventory):
     hosts_id = []
     hosts_region = []
     if 'all' not in build_inventory:
-        return hosts_id
+        return hosts_id, hosts_region
 
     for _, host_info in build_inventory['all']['hosts'].items():
         if 'host_id' in host_info.get('nodepool', {}):
