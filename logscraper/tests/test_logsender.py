@@ -326,6 +326,7 @@ class TestSender(base.TestCase):
             self.assertEqual('test-', args.subunit_index_prefix)
             mocked_open.assert_called_once()
 
+    @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')
@@ -335,7 +336,8 @@ class TestSender(base.TestCase):
                 directory="/tmp/testdir",
                 config='config.yaml'))
     def test_send(self, mock_args, mock_es_client, mock_build_info,
-                  mock_send_to_es, mock_remove_dir, mock_info):
+                  mock_send_to_es, mock_remove_dir, mock_info,
+                  mock_get_size):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
@@ -344,6 +346,7 @@ class TestSender(base.TestCase):
         subunit_index = 'subunit-index'
         mock_build_info.return_value = parsed_fields
         mock_es_client.return_value = 'fake_client_object'
+        mock_get_size.return_value = 1
         tags = ['test', 'info']
         mock_info.return_value = ('job-result.txt', tags)
 
@@ -376,6 +379,7 @@ class TestSender(base.TestCase):
             "%s/%s/job-result.txt" % (directory, build_uuid), expected_fields,
             'fake_client_object', index, None, None, perf_index, subunit_index)
 
+    @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')
@@ -384,7 +388,8 @@ class TestSender(base.TestCase):
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", keep=True))
     def test_send_keep_dir(self, mock_args, mock_es_client, mock_build_info,
-                           mock_send_to_es, mock_remove_dir, mock_info):
+                           mock_send_to_es, mock_remove_dir, mock_info,
+                           mock_get_size):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
@@ -395,10 +400,12 @@ class TestSender(base.TestCase):
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         # No metter what is ES status, it should keep dir
         mock_send_to_es.return_value = None
+        mock_get_size.return_value = 1
         logsender.send((build_uuid, build_files), args, directory, index,
                        perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
 
+    @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')
@@ -408,7 +415,8 @@ class TestSender(base.TestCase):
                 directory="/tmp/testdir", keep=False))
     def test_send_error_keep_dir(self, mock_args, mock_es_client,
                                  mock_build_info, mock_send_to_es,
-                                 mock_remove_dir, mock_info):
+                                 mock_remove_dir, mock_info,
+                                 mock_get_size):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
@@ -418,10 +426,12 @@ class TestSender(base.TestCase):
         args = logsender.get_arguments()
         mock_info.return_value = ('somefile.txt', ['somefile.txt'])
         mock_send_to_es.return_value = None
+        mock_get_size.return_value = 1
         logsender.send((build_uuid, build_files), args, directory, index,
                        perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
 
+    @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
     @mock.patch('logscraper.logsender.send_to_es')
@@ -432,7 +442,7 @@ class TestSender(base.TestCase):
                 config='config.yaml'))
     def test_send_skip_broken_file(self, mock_args, mock_es_client,
                                    mock_build_info, mock_send_to_es,
-                                   mock_remove_dir, mock_info):
+                                   mock_remove_dir, mock_info, mock_get_size):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
         build_files = ['job-result.txt', 'testrepository.subunit.gz']
         directory = '/tmp/testdir'
@@ -441,6 +451,7 @@ class TestSender(base.TestCase):
         subunit_index = 'subunit-index'
         mock_build_info.return_value = parsed_fields
         mock_es_client.return_value = 'fake_client_object'
+        mock_get_size.return_value = 1
         tags = ['test', 'info']
         mock_info.return_value = ('job-result.txt', tags)
 

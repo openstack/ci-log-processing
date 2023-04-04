@@ -114,7 +114,7 @@ def get_arguments():
 #                              Log sender                                     #
 ###############################################################################
 def _is_file_not_empty(file_path):
-    """Return True when buildinfo file is not empty"""
+    """Return True when file is not empty"""
     # NOTE: we can assume, that when file exists, all
     # content have been downloaded to the directory.
     return os.path.getsize(file_path) > 0
@@ -370,9 +370,20 @@ def doc_iter(inner, index, es_fields):
 
 
 def subunit_iter(file_name, index, es_fields):
-    with open(file_name) as f:
-        subunit = ReadSubunit(f)
-        parsed_subunit = subunit.get_results()
+
+    try:
+        with open(file_name) as f:
+            subunit = ReadSubunit(f)
+            parsed_subunit = subunit.get_results()
+    except Exception as e:
+        if 'Non subunit content' in e.args:
+            logging.info("The %s file does not contain any subunit "
+                         "content. Skipping..." % file_name)
+            return
+
+    if not parsed_subunit:
+        logging.info("Parsed subunit file is empty. Skipping...")
+        return
 
     for test_name in parsed_subunit:
         if test_name == "run_time":
@@ -457,6 +468,12 @@ def send(ready_directory, args, directory, index, perf_index, subunit_index):
         if build_file == 'testrepository.subunit.gz':
             logging.warning("The file %s is marked as broken. "
                             "Skipping..." % build_file)
+            continue
+
+        # NOTE(dpawlik): Sometimes file might be empty, but other files
+        # in the build dir are fine, and the dir is keeped because of it.
+        # We don't want to skip removing dir, when one of the file was empty.
+        if not _is_file_not_empty("%s/%s" % (build_dir, build_file)):
             continue
 
         fields = copy.deepcopy(es_fields)
