@@ -1062,7 +1062,12 @@ class TestSender(base.TestCase):
     def test_makeJsonFields_incorrect_values(self):
         expected_fields = {
             'api_placement_largest': 2151,
-            'hostname': 'ubuntu-focal-rax-iad-0030685864'
+            'hostname': 'ubuntu-focal-rax-iad-0030685864',
+            'service_apache2.service_memorycurrent': 0
+        }
+        expected_fields_alt = {
+            'hostname': 'np0033916789',
+            'service_apache2.service_memorycurrent': 0
         }
 
         json_content = {
@@ -1081,8 +1086,27 @@ class TestSender(base.TestCase):
             }
         }
 
+        json_content_alt = {
+            "services": [
+                {
+                    "service": "apache2.service",
+                    "MemoryCurrent": 18446744073709551615
+                }
+            ],
+            "db": [],
+            "processes": [],
+            "api": [],
+            "report": {
+                "timestamp": "2023-05-02T15:40:49.770732",
+                "hostname": "np0033916789",
+                "version": 2
+            }
+        }
+
         fields = logsender.makeJsonFields(json.dumps(json_content))
+        fields_alt = logsender.makeJsonFields(json.dumps(json_content_alt))
         self.assertEqual(expected_fields, fields)
+        self.assertEqual(expected_fields_alt, fields_alt)
 
     def test_get_message(self):
         line_1 = "28-02-2022 09:44:58.839036 | Some message"

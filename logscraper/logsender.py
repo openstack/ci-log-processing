@@ -230,10 +230,11 @@ def makeJsonFields(content):
     for service in content.get('services', []):
         key_name = "service_%s_memorycurrent" % service.get('service')
         current_mem = service.get('MemoryCurrent', 0)
-        if not isinstance(current_mem, int):
+        if (not isinstance(current_mem, int) or
+                current_mem > 9223372036854775807):
             logging.debug("Incorrect service %s memory consumption %s."
                           "Setting value to 0" % (service, current_mem))
-            continue
+            current_mem = 0
 
         fields[key_name] = current_mem
 
