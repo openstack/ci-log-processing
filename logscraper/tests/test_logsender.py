@@ -22,6 +22,7 @@ import os
 from logscraper import logsender
 from logscraper.tests import base
 from opensearchpy.exceptions import TransportError
+from pathlib import Path
 from ruamel.yaml import YAML
 from unittest import mock
 
@@ -914,6 +915,21 @@ class TestSender(base.TestCase):
                              args.subunit_index_prefix)
         self.assertEqual(es_doc, list(mock_bulk.call_args.args[1]))
         self.assertEqual(1, mock_bulk.call_count)
+
+    @mock.patch('logscraper.logsender.remove_directory')
+    @mock.patch.object(Path, 'stat')
+    def test_remove_old_dir(self, mock_stat, mock_rm):
+        mock_stat.return_value.st_mtime = 1685575754.860575
+        logsender.remove_old_dir("Somedir", "someBuildUuid", ["someFile"])
+        self.assertEqual(1, mock_rm.call_count)
+
+    @mock.patch('logscraper.logsender.remove_directory')
+    @mock.patch.object(Path, 'stat')
+    def test_remove_old_dir_keep(self, mock_stat, mock_rm):
+        now = datetime.datetime.utcnow().timestamp()
+        mock_stat.return_value.st_mtime = now
+        logsender.remove_old_dir("Somedir", "someBuildUuid", ["someFile"])
+        self.assertEqual(0, mock_rm.call_count)
 
     @mock.patch('logscraper.logsender.logline_iter')
     def test_doc_iter(self, mock_logline):

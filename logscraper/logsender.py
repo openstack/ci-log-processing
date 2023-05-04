@@ -37,6 +37,7 @@ from ast import literal_eval
 from opensearchpy import exceptions as opensearch_exceptions
 from opensearchpy import helpers
 from opensearchpy import OpenSearch
+from pathlib import Path
 from ruamel.yaml import YAML
 from subunit2sql.read_subunit import ReadSubunit
 
@@ -136,6 +137,21 @@ def read_yaml_file(file_path):
         return yaml.load(f)
 
 
+def remove_old_dir(root, build_uuid, files):
+    # Skip main download directory
+    if not files:
+        return
+
+    min_age = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+
+    build_dir_path = "%s/%s" % (root, build_uuid)
+    build_age = (Path(root) / build_uuid).stat().st_mtime
+    if min_age.timestamp() > build_age:
+        logging.warning("Some files are still missing for %s and nothing "
+                        "changed for 12 hours." % build_uuid)
+        remove_directory(build_dir_path)
+
+
 def get_inventory_info(directory):
     try:
         return read_yaml_file("%s/inventory.yaml" % directory)
@@ -165,7 +181,7 @@ def get_ready_directories(directory):
         else:
             logging.info("Skipping build with uuid %s. Probably all files "
                          "are not downloaded yet." % build_uuid)
-            continue
+            remove_old_dir(root, build_uuid, files)
 
     return log_files
 
@@ -475,6 +491,8 @@ def send(ready_directory, args, directory, index, perf_index, subunit_index):
         # in the build dir are fine, and the dir is keeped because of it.
         # We don't want to skip removing dir, when one of the file was empty.
         if not _is_file_not_empty("%s/%s" % (build_dir, build_file)):
+            logging.debug("File %s/%s is empty. Skipping..." % (
+                build_dir, build_file))
             continue
 
         fields = copy.deepcopy(es_fields)
