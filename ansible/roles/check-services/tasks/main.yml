@@ -61,7 +61,7 @@
     podman run -d --name opensearch \
       --network host \
       -e "discovery.type=single-node" \
-      quay.io/software-factory/opensearch:1.1.0
+      quay.io/software-factory/opensearch:2.5.0
 
 - name: Wait for Opensearch to be up
   wait_for:
@@ -89,45 +89,43 @@
     podman exec -it opensearch bash -c "JAVA_HOME=/usr/share/opensearch/jdk /usr/share/opensearch/securityadmin_demo.sh"
 
 ### LOGSTASH ###
-- name: Create require directories for Logstash
-  file:
-    path: "/etc/logstash/conf.d"
-    state: directory
-    recurse: true
-    owner: '1000'
-    group: '1000'
 
-- name: Create Logstash config
-  copy:
-    content: |
-      # opensearch analyze is working on 9600
-      http.port: 9601
-      http.host: 127.0.0.1
-    dest: /etc/logstash/logstash.yml
-    mode: '0644'
-    owner: '1000'
-    group: '1000'
-
-- name: Setup pipeline configuration
-  template:
-    src: logstash-index.conf.j2
-    dest: /etc/logstash/conf.d/logscraper.conf
-    mode: '0644'
-    owner: '1000'
-    group: '1000'
-
-- name: Setup Logstash service
+- name: Start Logstash service
   shell: >
-    podman run -d --name logstash \
-      --network host \
-      -v /etc/logstash/conf.d:/usr/share/logstash/pipeline:z \
-      -v /etc/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:z \
-      quay.io/software-factory/logstash:7.10.1
+    podman run -dit --name logstash --net host quay.io/software-factory/logstash-oss-with-opensearch-output-plugin:7.16.2 -e '
+      input {
+        tcp {
+          port => {{ output_port }}
+          codec => json_lines {}
+          type => "zuul"
+        }
+      } output {
+        opensearch {
+          hosts => ["https://localhost:9200"]
+          index => "logstash-logscraper-%{+YYYY.MM.dd}"
+          user => "admin"
+          password => "admin"
+          ssl => true
+          ssl_certificate_verification => false
+        }
+      } filter {
+          grok {
+            match => ["message", "(?<timestamp>[-0-9]{10}\s+[0-9.:]{12})(?<ms>[0-9]{3}) (?<sep>\|)%{GREEDYDATA:message}"]
+            overwrite => [ "message" ]
+          }
+          if [message] =~ /^\s*$/ {
+              drop { }
+          }
+          date {
+            match => ["timestamp", "yyyy-MM-dd HH:mm:ss.SSS"]
+            timezone => "UTC"
+          }
+       }'
 
 - name: Wait for Logstash to be up
   wait_for:
     host: 127.0.0.1
-    port: 9999
+    port: "{{ output_port }}"
     delay: 10
     timeout: 300
 
