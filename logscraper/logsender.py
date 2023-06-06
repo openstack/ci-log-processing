@@ -137,18 +137,17 @@ def read_yaml_file(file_path):
         return yaml.load(f)
 
 
-def remove_old_dir(root, build_uuid, files):
+def remove_old_dir(build_dir_path, build_uuid, files):
     # Skip main download directory
     if not files:
         return
 
     min_age = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
 
-    build_dir_path = "%s/%s" % (root, build_uuid)
-    build_age = (Path(root) / build_uuid).stat().st_mtime
+    build_age = (Path(build_dir_path)).stat().st_mtime
     if min_age.timestamp() > build_age:
         logging.warning("Some files are still missing for %s and nothing "
-                        "changed for 12 hours." % build_uuid)
+                        "changed for 12 hours.", build_uuid)
         remove_directory(build_dir_path)
 
 
@@ -173,7 +172,11 @@ def get_ready_directories(directory):
 
     log_files = {}
     for root, _, files in os.walk(directory):
-        build_uuid = root.split('/')[-1]
+        # NOTE: skip checking main download dir
+        if root == directory:
+            continue
+
+        build_uuid = os.path.basename(root)
         if check_info_files(root, files):
             files.remove("buildinfo")
             files.remove("inventory.yaml")
