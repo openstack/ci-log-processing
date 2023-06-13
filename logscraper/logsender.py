@@ -138,10 +138,7 @@ def read_yaml_file(file_path):
 
 
 def remove_old_dir(build_dir_path, build_uuid, files):
-    # Skip main download directory
-    if not files:
-        return
-
+    """Remove directories that are older than 12 hours"""
     min_age = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
 
     build_age = (Path(build_dir_path)).stat().st_mtime
