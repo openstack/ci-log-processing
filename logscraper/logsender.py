@@ -137,7 +137,7 @@ def read_yaml_file(file_path):
         return yaml.load(f)
 
 
-def remove_old_dir(build_dir_path, build_uuid, files):
+def remove_old_dir(build_dir_path, build_uuid):
     """Remove directories that are older than 12 hours"""
     min_age = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
 
@@ -181,7 +181,7 @@ def get_ready_directories(directory):
         else:
             logging.info("Skipping build with uuid %s. Probably all files "
                          "are not downloaded yet." % build_uuid)
-            remove_old_dir(root, build_uuid, files)
+            remove_old_dir(root, build_uuid)
 
     return log_files
 
@@ -512,7 +512,10 @@ def send(ready_directory, args, directory, index, perf_index, subunit_index):
     if send_status:
         remove_directory(build_dir)
     else:
-        logging.warning("The document was not send. Keeping log file")
+        logging.warning("The document was not send. Checking if log dir %s "
+                        "should be kept or removed due to inactivity" %
+                        build_dir)
+        remove_old_dir(build_dir, build_uuid)
 
 
 def get_index(args):

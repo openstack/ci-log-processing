@@ -406,6 +406,7 @@ class TestSender(base.TestCase):
                        perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
 
+    @mock.patch('logscraper.logsender.remove_old_dir')
     @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('logscraper.logsender.remove_directory')
@@ -417,10 +418,11 @@ class TestSender(base.TestCase):
     def test_send_error_keep_dir(self, mock_args, mock_es_client,
                                  mock_build_info, mock_send_to_es,
                                  mock_remove_dir, mock_info,
-                                 mock_get_size):
+                                 mock_get_size, mock_rm_old_dir):
         build_uuid = '38bf2cdc947643c9bb04f11f40a0f211'
         build_files = ['job-result.txt']
         directory = '/tmp/testdir'
+        build_dir = "%s/%s" % (directory, build_uuid)
         index = 'logstash-index'
         perf_index = 'performance-index'
         subunit_index = 'subunit-index'
@@ -431,6 +433,7 @@ class TestSender(base.TestCase):
         logsender.send((build_uuid, build_files), args, directory, index,
                        perf_index, subunit_index)
         self.assertFalse(mock_remove_dir.called)
+        mock_rm_old_dir.assert_called_with(build_dir, build_uuid)
 
     @mock.patch('os.path.getsize')
     @mock.patch('logscraper.logsender.get_file_info')
@@ -920,7 +923,7 @@ class TestSender(base.TestCase):
     @mock.patch.object(Path, 'stat')
     def test_remove_old_dir(self, mock_stat, mock_rm):
         mock_stat.return_value.st_mtime = 1685575754.860575
-        logsender.remove_old_dir("Somedir", "someBuildUuid", ["someFile"])
+        logsender.remove_old_dir("Somedir", "someBuildUuid")
         self.assertEqual(1, mock_rm.call_count)
 
     @mock.patch('logscraper.logsender.remove_directory')
@@ -928,7 +931,7 @@ class TestSender(base.TestCase):
     def test_remove_old_dir_keep(self, mock_stat, mock_rm):
         now = datetime.datetime.utcnow().timestamp()
         mock_stat.return_value.st_mtime = now
-        logsender.remove_old_dir("Somedir", "someBuildUuid", ["someFile"])
+        logsender.remove_old_dir("Somedir", "someBuildUuid")
         self.assertEqual(0, mock_rm.call_count)
 
     @mock.patch('logscraper.logsender.logline_iter')
