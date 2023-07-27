@@ -226,7 +226,7 @@ def makeFields(build_inventory, buildinfo):
     fields["build_branch"] = buildinfo.get("branch")
     fields["build_change"] = buildinfo.get("change")
     fields["build_patchset"] = buildinfo.get("patchset")
-    fields["build_newrev"] = build_details.get("newrev", "UNKNOWN")
+    fields["build_newrev"] = build_details.get("newrev", '')
     fields["build_uuid"] = str(buildinfo.get("uuid"))
     fields["node_provider"] = "local"
     fields["log_url"] = buildinfo.get("log_url")
