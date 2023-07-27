@@ -234,6 +234,7 @@ def makeFields(build_inventory, buildinfo):
     fields["hosts_id"], fields["hosts_region"] = get_hosts_id(build_inventory)
     if "executor" in build_details and "hostname" in build_details["executor"]:
         fields["zuul_executor"] = build_details["executor"]["hostname"]
+    fields['change_url'] = build_details.get('change_url', '')
     return fields
 
 

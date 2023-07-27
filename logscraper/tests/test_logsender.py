@@ -244,6 +244,7 @@ parsed_fields = {
     'build_patchset': '3',
     'build_newrev': '',
     'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+    'change_url': 'https://review.opendev.org/829161',
     'node_provider': 'local',
     'hosts_region': ['rax-DFW'],
     'hosts_id': ['ed82a4a59ac22bf396288f0b93bf1c658af932130f9d336aad528f21'],
@@ -361,6 +362,7 @@ class TestSender(base.TestCase):
                 'build_branch': 'master', 'build_change': 829161,
                 'build_patchset': '3', 'build_newrev': '',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'change_url': 'https://review.opendev.org/829161',
                 'node_provider': 'local',
                 'hosts_region': ['rax-DFW'],
                 'hosts_id': [
@@ -469,6 +471,7 @@ class TestSender(base.TestCase):
                 'build_branch': 'master', 'build_change': 829161,
                 'build_patchset': '3', 'build_newrev': '',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'change_url': 'https://review.opendev.org/829161',
                 'node_provider': 'local',
                 'hosts_region': ['rax-DFW'],
                 'hosts_id': [
@@ -715,6 +718,7 @@ class TestSender(base.TestCase):
                 'build_set': '52b29e0e716a4436bd20eed47fa396ce',
                 'build_status': 'SUCCESS',
                 'build_uuid': '38bf2cdc947643c9bb04f11f40a0f211',
+                'change_url': 'https://review.opendev.org/829161',
                 'db_cinder_delete': 1,
                 'db_cinder_insert': 1,
                 'db_cinder_select': 52,
