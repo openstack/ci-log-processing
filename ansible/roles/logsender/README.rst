@@ -30,6 +30,7 @@ Example Ansible variables that are configuring service:
         es_insecure: true
         es_index: logstash-logscraper
         download_dir: /mnt/logscraper/sometenant
+        file_list: /etc/logsender/download-list-TENANT.yaml
 
 
 That configuration will will deploy service with name: `logsender-openstack.service`.
@@ -75,6 +76,7 @@ and second one for getting logs from `sometenant` tenant.
           es_index: ""
           es_index_prefix: ""
           download_dir: /mnt/logscraper/sometenant
+          file_list: /etc/logscraper/my-downloadlist.yaml
     roles:
       - logsender
 

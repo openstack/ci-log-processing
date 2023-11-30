@@ -28,6 +28,7 @@ for example:
         zuul_api_url:
           - https://zuul.opendev.org/api/tenant/openstack
         insecure: false
+        file_list: /etc/logscraper/download-list-TENANT.yaml
 
 will deploy service with name: `logscraper@openstack.service`.
 It is because on one service we are able to deploy multiple instances
@@ -67,6 +68,7 @@ and second one for getting logs from `sometenant` tenant.
           insecure: True
           download: true
           download_dir: /mnt/logscraper
+          file_list: /etc/logscraper/my-downloadlist.yaml
     roles:
       - logscraper
 
