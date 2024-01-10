@@ -4,6 +4,18 @@
 
 This folder contains CloudFormation configurations for an AWS OpenSearch cluster and a set of Logstash servers behind a load balancer.
 
+## Deprecation Notice
+
+This file contains historical configurations related to the deployment of the OpenSearch service on AWS.
+The logstash service (deployed by logstashstack) is no longer used by the OpenDev community and it has been replaced by the logsender tool.
+
+The current AWS CloudFormation configuration includes:
+
+- `opensearchstack` - for OpenSearch
+- `ecr-stack` - storing admin credentials for OpenSearch in Secret Manager.
+
+Note: The `ecr-stack` may be removed in the future, but doing so requires changing administrator credentials!
+
 ## Usage
 
 You'll need appropriate AWS permissions (to create and monitor resources). Put AWS credentials in `~/.aws/credentials` and run `deploy_opensearch.sh`.
@@ -17,7 +29,7 @@ The Opensearch service requires additional configuration like creating readonly 
 Users will be created in the Opensearch dashboards service.
 We create only few internal users:
 
-* logstash - that will be used by logstash or logsender service
+* logstash - that will be used by logstash or logsender service (deprecated; replaced by logsender)
 * readonly - readonly user that will be able to discover data, check visualization and dashboards
 * openstack - readonly user with easy to remember password
 
@@ -51,7 +63,7 @@ tenant permissions:
   tenant: global_tenant
 ```
 
-* Logstash role (modify)
+* Logstash role (modify) - deprecated
 Details:
 
 ```
