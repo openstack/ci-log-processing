@@ -41,6 +41,11 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from subunit2sql.read_subunit import ReadSubunit
 
+try:
+    from logscraper import load_config as l_config
+except ImportError:
+    from logscraper.logscraper import load_config as l_config
+
 
 ###############################################################################
 #                                    CLI                                      #
@@ -50,7 +55,9 @@ def get_arguments():
                                      "and push to the Opensearch service")
     parser.add_argument("--config", help="Logscraper config file",
                         required=True)
-    parser.add_argument("--file-list", help="File list to download")
+    parser.add_argument("--file-list", help="File list to download. Parameter "
+                        "can be set multiple times.", default=[],
+                        action='append')
     parser.add_argument("--directory",
                         help="Directory, where the logs will "
                         "be stored.")
@@ -330,13 +337,11 @@ def open_file(path):
 
 
 def get_file_info(config, build_file):
-    yaml = YAML()
-    with open_file(config) as f:
-        config_files = yaml.load(f)
-        for f in config_files["files"]:
-            file_name = os.path.basename(f["name"])
-            if build_file.endswith(file_name):
-                return f["name"], f.get('tags', []) + [file_name]
+    config_files = l_config(config)
+    for f in config_files["files"]:
+        file_name = os.path.basename(f["name"])
+        if build_file.endswith(file_name):
+            return f["name"], f.get('tags', []) + [file_name]
     return os.path.basename(build_file), [os.path.basename(build_file)]
 
 

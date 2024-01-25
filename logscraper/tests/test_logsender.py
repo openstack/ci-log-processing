@@ -1157,9 +1157,12 @@ class TestSender(base.TestCase):
             got = logsender.get_timestamp(line)
             self.assertEqual(expected, got)
 
-    @mock.patch('ruamel.yaml.YAML.load')
+    @mock.patch('yaml.safe_load')
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    @mock.patch('logscraper.logscraper.load_config')
     @mock.patch('logscraper.logsender.open_file')
-    def test_get_file_info(self, mock_open_file, mock_yaml):
+    def test_get_file_info(self, mock_open_file, mock_load_config, mock_open,
+                           mock_yaml):
         config = {'files': [{
             'name': 'job-output.txt',
             'tags': ['console', 'console.html']

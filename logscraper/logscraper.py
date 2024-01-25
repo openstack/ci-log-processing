@@ -133,7 +133,9 @@ def get_arguments():
                                      "CI job logs into gearman.")
     parser.add_argument("--config", help="Logscraper config file",
                         required=True)
-    parser.add_argument("--file-list", help="File list to download")
+    parser.add_argument("--file-list", help="File list to download. Parameter "
+                        "can be set multiple times.", default=[],
+                        action='append')
     parser.add_argument("--zuul-api-url", help="URL(s) for Zuul API. Parameter"
                         " can be set multiple times.", nargs='+', default=[])
     parser.add_argument("--job-name", help="CI job name(s). Parameter can be "
@@ -496,10 +498,31 @@ def save_build_info(directory, build):
         yaml.dump(build, text_file)
 
 
+def merge_dicts(main, additional):
+    merged = main.copy()
+
+    for k, v in additional.items():
+        if k in merged:
+            if isinstance(merged[k], list) and isinstance(v, list):
+                merged[k].extend(v)
+            elif isinstance(merged[k], dict) and isinstance(v, dict):
+                merged[k] = merge_dicts(merged[k], v)
+            else:
+                logging.critical("Trying to merge incompatible "
+                                 "types", type(merged[k]), type(v))
+        else:
+            merged[k] = v
+
+    return merged
+
+
 def load_config(config_path):
     try:
-        with open(config_path) as f:
-            return yaml.safe_load(f)
+        merged_config = {}
+        for yaml_file in config_path:
+            with open(yaml_file) as f:
+                merged_config = merge_dicts(merged_config, yaml.safe_load(f))
+        return merged_config
     except PermissionError:
         logging.critical("Can not open config file %s" % config_path)
     except FileNotFoundError:

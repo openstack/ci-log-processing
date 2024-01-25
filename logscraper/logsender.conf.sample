@@ -15,6 +15,6 @@ insecure: False
 ca_file:
 follow: True
 workers: 1
-file_list: logscraper/download-list.yaml.sample
+file_list: ['logscraper/download-list.yaml.sample']
 performance_index_prefix: performance-
 subunit_index_prefix: subunit-

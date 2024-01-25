@@ -6,7 +6,7 @@ workers: {{ item['logscraper_workers'] | default(1) }}
 max_skipped: {{ item['max_skipped'] | default(1000) }}
 debug: {{ item['debug'] | default(false) }}
 download: {{ item['download'] | default(true) }}
-file_list: {{ item['file_list'] | default(logscraper_dir + '/download-list-' + item['tenant'] + '.yaml') }}
+file_list: {{ item['file_list'] | default([logscraper_dir + '/download-list-' + item['tenant'] + '.yaml']) | list }}
 directory: {{ item['download_dir'] | default('/tmp/logscraper') }}
 wait_time: {{ item['logscraper_wait_time'] | default(120) }}
 insecure: {{ item['insecure'] | default(false) }}

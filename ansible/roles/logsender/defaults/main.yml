@@ -20,6 +20,7 @@ container_images:
 #     es_index: ""
 #     es_insecure: false
 #     download_dir: /mnt/logscraper/sometenant
+#     file_list: []
 #     doc_type: "_doc"
 #     logsender_workers: 1
 #     chunk_size: 1500

@@ -9,7 +9,9 @@
     --name logsender-{{ item.tenant }} \
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
     --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
-    --volume {{ item['file_list'] | default(logscraper_dir + '/download-list-' + item['tenant'] + '.yaml') }}:{{ item['file_list'] | default(logscraper_dir + '/download-list-' + item['tenant'] + '.yaml') }}:z \
+    {% for file_list in item['file_list'] | default([logscraper_dir + '/download-list-' + item['tenant'] + '.yaml']) -%}
+    --volume {{ file_list }}:{{ file_list }}:z \
+    {% endfor -%}
     {% if 'logsender_custom_ca_crt' in item %}
     --volume {{ item['logsender_custom_ca_crt'] }}:{{ item['logsender_custom_ca_crt'] }}:z \
     {% endif %}

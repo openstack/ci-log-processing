@@ -552,6 +552,61 @@ class TestScraper(base.TestCase):
                                                  10)
         self.assertEqual(2, len(files))
 
+    @mock.patch('yaml.safe_load')
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    def test_load_config(self, mock_open, mock_yaml):
+        config_path = ['/tmp/config_1', '/tmp/config_2']
+        config_1 = {'files': [{
+            'name': 'job-output.txt',
+            'tags': ['console', 'console.html']
+        }, {'name': 'logs/undercloud/var/log/extra/logstash.txt',
+            'tags': ['console', 'postpci']}]}
+        config_2 = {'files': [{
+            'name': 'new-job.txt',
+            'tags': ['new-console']
+        }, {'name': 'logs/some-file.log',
+            'tags': ['postpci']}]}
+        final_config = {'files': [{
+            'name': 'job-output.txt',
+            'tags': ['console', 'console.html']
+        }, {
+            'name': 'logs/undercloud/var/log/extra/logstash.txt',
+            'tags': ['console', 'postpci']
+        }, {
+            'name': 'new-job.txt', 'tags': ['new-console']
+        }, {
+            'name': 'logs/some-file.log', 'tags': ['postpci']}]}
+        mock_yaml.side_effect = [config_1, config_2]
+        parsed_config = logscraper.load_config(config_path)
+        self.assertEqual(final_config, parsed_config)
+
+    @mock.patch('yaml.safe_load')
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    def test_load_config_different_keys(self, mock_open, mock_yaml):
+        config_path = ['/tmp/config_1', '/tmp/config_2']
+        config_1 = {'files': [{
+            'name': 'job-output.txt',
+            'tags': ['console', 'console.html']
+        }, {'name': 'logs/undercloud/var/log/extra/logstash.txt',
+            'tags': ['console', 'postpci']}]}
+        config_2 = {'files2': [{
+            'name': 'new-job.txt',
+            'tags': ['new-console']
+        }, {'name': 'logs/some-file.log',
+            'tags': ['postpci']}]}
+        final_config = {'files': [{
+            'name': 'job-output.txt',
+            'tags': ['console', 'console.html']
+        }, {'name': 'logs/undercloud/var/log/extra/logstash.txt',
+            'tags': ['console', 'postpci']}
+        ], 'files2': [{
+            'name': 'new-job.txt',
+            'tags': ['new-console']
+        }, {'name': 'logs/some-file.log', 'tags': ['postpci']}]}
+        mock_yaml.side_effect = [config_1, config_2]
+        parsed_config = logscraper.load_config(config_path)
+        self.assertEqual(final_config, parsed_config)
+
 
 class TestConfig(base.TestCase):
     @mock.patch('logscraper.logscraper.load_config')
