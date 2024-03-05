@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM quay.io/centos/centos:stream8 as logscraper
+FROM quay.io/centos/centos:stream9 as logscraper
 
 ENV PATH=/workspace/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LANG=en_US.UTF-8
@@ -22,9 +22,8 @@ RUN groupadd logscraper --gid 1000 && \
     useradd --home-dir /home/logscraper --gid 1000 --uid 1000 logscraper
 
 RUN dnf update -y && \
-    dnf install -y python38 python38-setuptools \
-                   python38-devel python38-wheel \
-                   python38-pip git
+    dnf install -y python python-setuptools \
+                   python-devel python-pip git
 
 COPY . /tmp/src
 RUN cd /tmp/src && \
