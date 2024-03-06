@@ -53,7 +53,7 @@
     dependencies:
       - name: openstack-tox-pep8
         soft: true
-      - name: openstack-tox-py39
+      - name: openstack-tox-py311
         soft: true
       - name: ci-log-processing-functional-test-centos-9-stream-sender
         soft: true
@@ -68,14 +68,14 @@
       jobs:
         - openstack-tox-linters
         - openstack-tox-pep8
-        - openstack-tox-py39
+        - openstack-tox-py311
         - ci-log-processing-build-image
         - ci-log-processing-functional-test-centos-9-stream-sender
     gate:
       jobs:
         - openstack-tox-linters
         - openstack-tox-pep8
-        - openstack-tox-py39
+        - openstack-tox-py311
         - ci-log-processing-functional-test-centos-9-stream-sender
         - ci-log-processing-build-image
     post:
