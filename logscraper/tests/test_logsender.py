@@ -72,6 +72,52 @@ uuid: 38bf2cdc947643c9bb04f11f40a0f211
 voting: true
 """
 
+buildinfo_newZuul = """
+_id: 17428524
+branch: master
+artifacts:
+- metadata:
+    command: ""
+  name: Download all logs
+  url: ""
+- metadata:
+    type: zuul_manifest
+  name: Zuul Manifest
+  url:  ""
+- metadata:
+    type: unit_test_report
+  name: Unit Test Report
+  url: ""
+buildset:
+  uuid: 52b29e0e716a4436bd20eed47fa396ce
+duration: 1707.0
+end_time: '2022-02-28T10:07:36'
+error_detail: null
+event_id: dda0cbf9caaa496b9127a7646b8a28a8
+event_timestamp: '2022-02-28T09:32:08'
+final: true
+held: false
+job_name: openstack-tox-py39
+log_url: https://somehost/829161/3/check/openstack-tox-py39/38bf2cd/
+nodeset: fedora-35
+pipeline: check
+provides: []
+ref:
+  branch: master
+  change: 829161
+  newrev: null
+  oldrev: null
+  patchset: '1'
+  project: openstack/neutron
+  ref: refs/changes/61/829161/3
+  ref_url: https://review.opendev.org/829161
+result: SUCCESS
+start_time: '2022-02-28T09:39:09'
+tenant: openstack
+uuid: 38bf2cdc947643c9bb04f11f40a0f211
+voting: true
+"""
+
 inventory_info = """
 all:
   hosts:
@@ -1007,6 +1053,16 @@ class TestSender(base.TestCase):
                 side_effect=[_parse_get_yaml(buildinfo),
                              _parse_get_yaml(inventory_info)])
     def test_makeFields(self, mock_read_yaml_file):
+        buildinfo_yaml = logsender.get_build_info('fake_dir')
+        inventory_info_yaml = logsender.get_inventory_info('other_fake_dir')
+        generated_info = logsender.makeFields(inventory_info_yaml,
+                                              buildinfo_yaml)
+        self.assertEqual(parsed_fields, generated_info)
+
+    @mock.patch('logscraper.logsender.read_yaml_file',
+                side_effect=[_parse_get_yaml(buildinfo_newZuul),
+                             _parse_get_yaml(inventory_info)])
+    def test_makeFields_newZuul(self, mock_read_yaml_file):
         buildinfo_yaml = logsender.get_build_info('fake_dir')
         inventory_info_yaml = logsender.get_inventory_info('other_fake_dir')
         generated_info = logsender.makeFields(inventory_info_yaml,

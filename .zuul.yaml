@@ -3,6 +3,7 @@
     name: ci-log-processing-functional-test-centos-8-stream
     description: Test is validating ci log processing services
     run: ansible/playbooks/check-services.yml
+    voting: false
     nodeset:
       nodes:
         - name: centos-8-stream

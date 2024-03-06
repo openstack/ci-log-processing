@@ -212,6 +212,38 @@ def remove_directory(dir_path):
     shutil.rmtree(dir_path)
 
 
+def makeZuulCapability(build_details, buildinfo):
+    if isinstance(build_details.get('project'), dict):
+        project = build_details.get('project').get('name')
+    else:
+        project = buildinfo.get('project')
+    build_details['project'] = project
+
+    if isinstance(buildinfo.get('ref'), dict):
+        ref = buildinfo.get("ref").get('ref')
+    else:
+        ref = buildinfo.get("ref")
+    buildinfo['ref'] = ref
+
+    if not build_details.get("branch"):
+        build_details["branch"] = buildinfo.get("branch")
+
+    if not build_details.get("change"):
+        build_details["change"] = buildinfo.get("change")
+
+    if not build_details.get("patchset"):
+        build_details["patchset"] = buildinfo.get("patchset")
+
+    if isinstance(buildinfo.get("buildset"), dict):
+        buildset = buildinfo.get("buildset").get("uuid")
+        build_details["buildset"] = buildset
+
+    if not build_details.get('change_url'):
+        build_details['change_url'] = buildinfo.get('ref_url')
+
+    return build_details, buildinfo
+
+
 def makeFields(build_inventory, buildinfo):
     fields = {}
 
@@ -222,17 +254,19 @@ def makeFields(build_inventory, buildinfo):
         # if custom build provided, inventory.yaml file does not have info
         build_details = {}
 
+    build_details, buildinfo = makeZuulCapability(build_details, buildinfo)
+
     fields["build_node"] = "zuul-executor"
     fields["build_name"] = buildinfo.get("job_name")
     fields["build_status"] = buildinfo["result"]
-    fields["project"] = buildinfo.get('project')
+    fields["project"] = build_details.get("project")
     fields["voting"] = int(build_details.get("voting", 2))
     fields["build_set"] = str(build_details.get("buildset", "NONE"))
     fields["build_queue"] = build_details.get("pipeline", "NONE")
     fields["build_ref"] = buildinfo.get("ref")
-    fields["build_branch"] = buildinfo.get("branch")
-    fields["build_change"] = buildinfo.get("change")
-    fields["build_patchset"] = buildinfo.get("patchset")
+    fields["build_branch"] = build_details.get("branch")
+    fields["build_change"] = int(build_details.get("change"))
+    fields["build_patchset"] = build_details.get("patchset")
     fields["build_newrev"] = build_details.get("newrev", '')
     fields["build_uuid"] = str(buildinfo.get("uuid"))
     fields["node_provider"] = "local"
