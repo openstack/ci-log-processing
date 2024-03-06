@@ -16,4 +16,4 @@
     --volume {{ item['logsender_custom_ca_crt'] }}:{{ item['logsender_custom_ca_crt'] }}:z \
     {% endif %}
     {{ container_images['logsender'] }} \
-    /usr/bin/logsender --config {{ logscraper_dir }}/logsender-{{ item['tenant'] }}.config
+    /usr/local/bin/logsender --config {{ logscraper_dir }}/logsender-{{ item['tenant'] }}.config

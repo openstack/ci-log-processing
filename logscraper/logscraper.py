@@ -15,9 +15,11 @@
 # under the License.
 
 """
-The goal is to push recent zuul builds into log gearman processor.
+The goal is to take recent logs from Zuul CI job to the disk.
+Below short view:
 
 [ CLI ] -> [ Config ] -> [ ZuulFetcher ] -> [ LogPublisher ]
+                            (logscraper) ->    (logsender)
 
 
 # Zuul builds results are not sorted by end time. Here is a problematic
@@ -61,14 +63,11 @@ end_time.
 import argparse
 import configparser
 import datetime
-import gear
 import itertools
-import json
 import logging
 import multiprocessing
 import os
 import requests
-import socket
 import sqlite3
 import sys
 import tenacity
@@ -129,8 +128,8 @@ def _verify_ca(args):
 #                                    CLI                                      #
 ###############################################################################
 def get_arguments():
-    parser = argparse.ArgumentParser(description="Fetch and push last Zuul "
-                                     "CI job logs into gearman.")
+    parser = argparse.ArgumentParser(description="Fetch last Zuul CI job "
+                                     "logs.")
     parser.add_argument("--config", help="Logscraper config file",
                         required=True)
     parser.add_argument("--file-list", help="File list to download. Parameter "
@@ -141,19 +140,12 @@ def get_arguments():
     parser.add_argument("--job-name", help="CI job name(s). Parameter can be "
                         "set multiple times. If not set it would scrape "
                         "every latest builds", nargs='+', default=[])
-    parser.add_argument("--gearman-server", help="Gearman host address")
-    parser.add_argument("--gearman-port", help="Gearman listen port.",
-                        type=int)
     parser.add_argument("--follow", help="Keep polling zuul builds",
                         action="store_true")
     parser.add_argument("--insecure", help="Skip validating SSL cert",
                         action="store_true")
     parser.add_argument("--checkpoint-file", help="File that will keep "
                         "information about last uuid timestamp for a job.")
-    parser.add_argument("--logstash-url", help="When provided, script will "
-                        "check connection to Logstash service before sending "
-                        "to log processing system. For example: "
-                        "logstash.local:9999")
     parser.add_argument("--workers", help="Worker processes for logscraper",
                         type=int)
     parser.add_argument("--max-skipped", help="How many job results should be "
@@ -161,9 +153,6 @@ def get_arguments():
                         "is founded",
                         type=int)
     parser.add_argument("--debug", help="Print more information",
-                        action="store_true")
-    parser.add_argument("--download", help="Download logs and do not send "
-                        "to gearman service",
                         action="store_true")
     parser.add_argument("--directory", help="Directory, where the logs will "
                         "be stored.")
@@ -317,23 +306,10 @@ class Monitoring:
 ###############################################################################
 class LogMatcher(object):
     def __init__(self, server, port, success, log_url, host_vars, config):
-        self.client = gear.Client()
-        self.client.addServer(server, port)
         self.hosts = host_vars
         self.success = success
         self.log_url = log_url
         self.config_file = config
-
-    def submitJobs(self, jobname, files, result):
-        self.client.waitForServer(90)
-        ret = []
-        for f in files:
-            output = self.makeOutput(f, result)
-            output = json.dumps(output).encode("utf8")
-            job = gear.TextJob(jobname, output)
-            self.client.submitJob(job, background=True)
-            ret.append(dict(handle=job.handle, arguments=output))
-        return ret
 
     def makeOutput(self, file_object, result):
         output = {}
@@ -680,7 +656,6 @@ def run_build(build):
     """
 
     args = build.get("build_args")
-    config_file = build.get("config_file")
 
     logging.info(
         "Processing logs for %s | %s | %s | %s",
@@ -690,64 +665,33 @@ def run_build(build):
         build["uuid"],
     )
 
-    if args.download:
-        logging.debug("Started fetching build logs")
-        directory = "%s/%s" % (args.directory, build["uuid"])
-        try:
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-        except PermissionError:
-            logging.critical("Can not create directory %s" % directory)
-        except Exception as e:
-            logging.critical("Exception occurred %s on creating dir %s" % (
-                e, directory))
+    logging.debug("Started fetching build logs")
+    directory = "%s/%s" % (args.directory, build["uuid"])
+    try:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+    except PermissionError:
+        logging.critical("Can not create directory %s" % directory)
+    except Exception as e:
+        logging.critical("Exception occurred %s on creating dir %s" % (
+            e, directory))
 
-        validate_ca = _verify_ca(args)
+    validate_ca = _verify_ca(args)
 
-        if 'log_url' in build and build["log_url"]:
-            check_specified_files(build, validate_ca, args.timeout, directory)
-        else:
-            # NOTE: if build result does not contain 'log_url', so there is
-            # no result files to parse, but we would like to have that
-            # knowledge, so it will create own job-results.txt file that
-            # contains:
-            # build["end_time"] | build["result"]
-            logging.info("There is no log url for the build %s, so no file can"
-                         " be downloaded. Creating custom job-results.txt " %
-                         build["uuid"])
-            create_custom_result(build, directory)
-
-        save_build_info(directory, build)
+    if 'log_url' in build and build["log_url"]:
+        check_specified_files(build, validate_ca, args.timeout, directory)
     else:
-        # NOTE: As it was earlier, logs that contains status other than
-        # "SUCCESS" or "FAILURE" will be parsed by Gearman service.
-        logging.debug("Parsing content for gearman service")
-        validate_ca = _verify_ca(args)
-        results = dict(files=[], jobs=[], invocation={})
-        files = check_specified_files(build, validate_ca, args.timeout)
+        # NOTE: if build result does not contain 'log_url', so there is
+        # no result files to parse, but we would like to have that
+        # knowledge, so it will create own job-results.txt file that
+        # contains:
+        # build["end_time"] | build["result"]
+        logging.info("There is no log url for the build %s, so no file can"
+                     " be downloaded. Creating custom job-results.txt " %
+                     build["uuid"])
+        create_custom_result(build, directory)
 
-        results["files"] = files
-        lmc = LogMatcher(
-            args.gearman_server,
-            args.gearman_port,
-            build["result"],
-            build["log_url"],
-            {},
-            config_file
-        )
-
-        lmc.submitJobs("push-log", results["files"], build)
-
-
-def check_connection(logstash_url):
-    """Return True when Logstash service is reachable
-
-    Check if service is up before pushing results.
-    """
-    host, port = logstash_url.split(':')
-    logging.debug("Checking connection to %s on port %s" % (host, port))
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex((host, port)) == 0
+    save_build_info(directory, build)
 
 
 def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
@@ -771,11 +715,6 @@ def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
         builds.append(build)
 
     logging.info("Processing %d builds", len(builds))
-
-    if args.logstash_url and not check_connection(args.logstash_url):
-        logging.critical("Can not connect to logstash %s. "
-                         "Is it up?" % args.logstash_url)
-        return
 
     if builds:
         pool = multiprocessing.Pool(int(args.workers))
@@ -824,10 +763,6 @@ def main():
         monitoring = Monitoring()
         start_http_server(args.monitoring_port)
 
-    if args.download and args.gearman_server and args.gearman_port:
-        logging.critical("Can not use logscraper to send logs to gearman "
-                         "and download logs. Choose one")
-        sys.exit(1)
     while True:
         run(args, monitoring)
 

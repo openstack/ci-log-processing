@@ -35,7 +35,7 @@
     dest: "{{ logscraper_dir }}/download-list-{{ item.tenant }}.yaml"
     owner: "{{ logscraper_user }}"
     group: "{{ logscraper_group }}"
-    mode: "0640"
+    mode: "0644"
   register: _download_file
 
 - name: Generate systemd unit

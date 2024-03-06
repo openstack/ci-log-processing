@@ -24,8 +24,6 @@ Indices and tables
    * :doc:`logscraper-role`
    * :doc:`logsender`
    * :doc:`logsender-role`
-   * :doc:`loggearman`
-   * :doc:`loggearman-role`
 
 .. toctree::
    :maxdepth: 2
@@ -36,5 +34,3 @@ Indices and tables
    logscraper-role
    logsender
    logsender-role
-   loggearman
-   loggearman-role

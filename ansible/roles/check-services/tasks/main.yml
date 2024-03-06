@@ -26,25 +26,6 @@
         podman images --noheading quay.io/logscraper:dev  | awk '{print $3}'
       register: _logscraper_image_id
 
-    - name: Build logscraper container image
-      shell: >
-        podman build -t quay.io/loggearman:dev -f loggearman/Dockerfile
-      args:
-        chdir: "{{ zuul.projects['opendev.org/openstack/ci-log-processing'].src_dir }}"
-      when: zuul is defined
-
-    - name: Build loggearman container image - non Zuul
-      shell: >
-        podman build -t quay.io/loggearman:dev -f loggearman/Dockerfile
-      args:
-        chdir: "{{ playbook_dir }}"
-      when: zuul is not defined
-
-    - name: Get loggearman image id
-      shell: |
-        podman images --noheading quay.io/loggearman:dev  | awk '{print $3}'
-      register: _loggearman_image_id
-
     - name: Print all images
       shell: |
         podman images
@@ -53,7 +34,6 @@
       set_fact:
         container_images:
           logscraper: "{{ _logscraper_image_id.stdout }}"
-          loggearman: "{{ _loggearman_image_id.stdout }}"
 
 ### OPENSEARCH ####
 - name: Setup Opensearch
@@ -129,23 +109,6 @@
     delay: 10
     timeout: 300
 
-### Loggearman ###
-- name: Setup loggearman service
-  include_role:
-    name: loggearman
-
-# Flush handlers before running test
-- name: Force all notified handlers to run now
-  meta: flush_handlers
-
-### service validation ###
-- name: Check if log gearman client is listening
-  wait_for:
-    host: "{{ gearman_host }}"
-    port: "{{ gearman_port }}"
-    delay: 10
-    timeout: 300
-
 ### Logscraper ###
 - name: Setup logscraper service
   include_role:
@@ -156,8 +119,6 @@
     systemctl is-active -q {{ item }}
   loop:
     - logscraper-openstack
-    - loggearman-client
-    - loggearman-worker
   register: _service_status
   failed_when: _service_status.rc != 0
 
@@ -190,14 +151,6 @@
     - name: Get opensearch logs
       shell: |
         podman logs opensearch
-
-    - name: Get gearman client logs
-      shell: |
-        podman logs loggearman-client
-
-    - name: Get gearman worker logs
-      shell: |
-        podman logs loggearman-worker
 
     - name: Get indices to fail the test
       uri:

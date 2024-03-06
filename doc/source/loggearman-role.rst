@@ -1,1 +1,0 @@
-../../ansible/roles/loggearman/README.rst

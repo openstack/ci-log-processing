@@ -18,4 +18,4 @@
     --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
     {% endif %}
     {{ container_images['logscraper'] }} \
-    /usr/bin/logscraper --config {{ logscraper_dir }}/logscraper-{{ item['tenant'] }}.config
+    /usr/local/bin/logscraper --config {{ logscraper_dir }}/logscraper-{{ item['tenant'] }}.config

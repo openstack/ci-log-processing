@@ -31,77 +31,10 @@ Dashboards objects versioning.
 Available workflows
 -------------------
 
-The Openstack CI Log Processing project is providing two configurations
+The Openstack CI Log Processing project is provides configuration
 for sending logs from Zuul CI to the Opensearch host.
 
-1. Logscraper, log gearman client, log gearman worker, logstash
-
-With this solution, log workflow looks like:
-
-.. code-block:: shell
-
-   +------------------+  1. Get last builds info  +----------------+
-   |                  |-------------------------> |                |
-   |    Logscraper    |                           |     Zuul API   |
-   |                  |<------------------------- |                |
-   +------------------+  2. Fetch data            +----------------+
-            |
-            |
-            +-------------------+
-                                |
-                                |
-                3. Send queue   |
-                logs to gearman |
-                client          |
-                                v
-                      +------------------+
-                      |                  |
-                      |  Log gearman     |
-                      |     client       |
-                      +------------------+
-           +--------------           --------------+
-           |                    |                  |
-           |  4. Consume queue, |                  |
-           | download log files |                  |
-           |                    |                  |
-           v                    v                  v
-   +---------------+   +----------------+  +---------------+
-   |  Log gearman  |   |   Log gearman  |  | Log gearman   |
-   |  worker       |   |   worker       |  | worker        |
-   +---------------+   +----------------+  +---------------+
-          |                     |                  |
-          |   5. Send to        |                  |
-          |      Logstash       |                  |
-          |                     v                  |
-          |            +----------------+          |
-          |            |                |          |
-          +--------->  |    Logstash    |  <-------+
-                       |                |
-                       +----------------+
-                               |
-                 6. Send to    |
-                    Opensearch |
-                               |
-                      +--------v--------+
-                      |                 |
-                      |    Opensearch   |
-                      |                 |
-                      +-----------------+
-
-
-On the beginning, this project was designed to use that solution, but
-it have a few bottlenecks:
-- log gearman client can use many memory, when log gearman worker is not fast,
-- one log gearman worker is not enough even on small infrastructure,
-- logstash service can fail,
-- logscraper is checking if log files are available, then log gearman
-  is downloading the logs, which can make an issue on log sever, that
-  host does not have free socket.
-
-You can deploy your log workflow by using example Ansible playbook that
-you can find in `ansible/playbooks/check-services.yml` in this project.
-
-2. Logscraper, logsender
+Logscraper, logsender
 
 This workflow removes bottlenecks by removing: log gearman client,
 log gearman worker and logstash service. Logs are downloaded when

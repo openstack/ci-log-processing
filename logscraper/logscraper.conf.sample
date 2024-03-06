@@ -17,6 +17,4 @@ monitoring_port: 9128
 ######################
 # DEPRECATED OPTIONS #
 ######################
-# gearman_server: localhost
-# gearman_port: 4730
 # logstash_url: https://localhost:9600

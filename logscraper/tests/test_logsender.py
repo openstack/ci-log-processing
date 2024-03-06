@@ -36,8 +36,6 @@ build_args:
   directory: /tmp/logscraper
   download: true
   follow: false
-  gearman_port: 4730
-  gearman_server: null
   insecure: true
   job_name: null
   logstash_url: null

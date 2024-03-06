@@ -15,7 +15,6 @@
 # under the License.
 
 import datetime
-import json
 import tempfile
 
 from logscraper import logscraper
@@ -144,8 +143,7 @@ class _MockedPoolMapAsyncResult:
 
 
 class FakeArgs(object):
-    def __init__(self, zuul_api_url=None, gearman_server=None,
-                 gearman_port=None, follow=False, insecure=False,
+    def __init__(self, zuul_api_url=None, follow=False, insecure=False,
                  checkpoint_file=None, ignore_checkpoint=None,
                  logstash_url=None, workers=None, max_skipped=None,
                  job_name=None, download=None, directory=None,
@@ -154,8 +152,6 @@ class FakeArgs(object):
                  timeout=None):
 
         self.zuul_api_url = zuul_api_url
-        self.gearman_server = gearman_server
-        self.gearman_port = gearman_port
         self.follow = follow
         self.insecure = insecure
         self.checkpoint_file = checkpoint_file
@@ -251,33 +247,10 @@ class TestScraper(base.TestCase):
                 zuul_api_url=['http://somehost.com/api/tenant/tenant1',
                               'http://somehost.com/api/tenant/tenant2',
                               'http://somehost.com/api/tenant/tenant3'],
-                gearman_server='localhost',
                 job_name=['testjob1', 'testjob2'])
             args = logscraper.get_arguments()
             logscraper.run(args, mock_monitoring)
             self.assertEqual(2, mock_scraping.call_count)
-
-    @mock.patch('socket.socket')
-    def test_check_connection(self, mock_socket):
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='somehost.com',
-                gearman_server='localhost',
-                logstash_url='localhost:9999')
-            args = logscraper.get_arguments()
-            logscraper.check_connection(args.logstash_url)
-            self.assertTrue(mock_socket.called)
-
-    @mock.patch('socket.socket')
-    def test_check_connection_wrong_host(self, mock_socket):
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='somehost.com',
-                gearman_server='localhost',
-                logstash_url='localhost')
-            args = logscraper.get_arguments()
-            self.assertRaises(ValueError, logscraper.check_connection,
-                              args.logstash_url)
 
     @mock.patch('logscraper.logscraper.get_builds',
                 return_value=iter([{'_id': '1234'}]))
@@ -285,7 +258,6 @@ class TestScraper(base.TestCase):
     def test_get_last_job_results(self, mock_args, mock_get_builds):
         mock_args.return_value = FakeArgs(
             zuul_api_url='http://somehost.com/api/tenant/sometenant',
-            gearman_server='localhost',
             checkpoint_file='/tmp/testfile')
         args = logscraper.get_arguments()
         some_config = logscraper.Config(args, args.zuul_api_url)
@@ -306,6 +278,7 @@ class TestScraper(base.TestCase):
             'someuuid', None, 10)
         self.assertRaises(ValueError, make_fake_list, job_result)
 
+    @mock.patch('sqlite3.connect', return_value=mock.MagicMock())
     @mock.patch('logscraper.logscraper.load_config')
     @mock.patch('logscraper.logscraper.save_build_info')
     @mock.patch('logscraper.logscraper.check_specified_files')
@@ -313,16 +286,13 @@ class TestScraper(base.TestCase):
     @mock.patch('os.path.isfile')
     @mock.patch('logscraper.logscraper.check_specified_files',
                 return_value=['job-output.txt'])
-    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
     @mock.patch('argparse.ArgumentParser.parse_args',
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
-                    gearman_server='localhost',
-                    gearman_port=4731,
                     workers=1))
-    def test_run_scraping(self, mock_args, mock_submit, mock_files,
+    def test_run_scraping(self, mock_args,  mock_files,
                           mock_isfile, mock_readfile, mock_specified_files,
-                          mock_save_buildinfo, mock_config):
+                          mock_save_buildinfo, mock_config, mock_sqlite):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             with mock.patch('multiprocessing.pool.Pool.map_async',
@@ -333,12 +303,9 @@ class TestScraper(base.TestCase):
                 mock_job_results.return_value = [builds_result[0]]
                 logscraper.run_scraping(
                     args, 'http://somehost.com/api/tenant/tenant1')
-                self.assertEqual(builds_result[0]['uuid'],
-                                 mock_submit.call_args.args[2]['uuid'])
-                self.assertTrue(mock_submit.called)
                 self.assertEqual(builds_result[0],
                                  mock_specified_files.call_args.args[0])
-                self.assertFalse(mock_save_buildinfo.called)
+                self.assertTrue(mock_save_buildinfo.called)
 
     @mock.patch('requests.get')
     @mock.patch('logscraper.logscraper.Monitoring')
@@ -351,11 +318,12 @@ class TestScraper(base.TestCase):
                 zuul_api_url=['http://somehost.com/api/tenant/tenant1',
                               'http://somehost.com/api/tenant/tenant2',
                               'http://somehost.com/api/tenant/tenant3'],
-                gearman_server='localhost')
+            )
             args = logscraper.get_arguments()
             logscraper.run(args, mock_monitoring)
             self.assertEqual(3, mock_scraping.call_count)
 
+    @mock.patch('sqlite3.connect', return_value=mock.MagicMock())
     @mock.patch('logscraper.logscraper.load_config')
     @mock.patch('logscraper.logscraper.save_build_info')
     @mock.patch('logscraper.logscraper.check_specified_files')
@@ -363,15 +331,14 @@ class TestScraper(base.TestCase):
     @mock.patch('os.path.isfile')
     @mock.patch('logscraper.logscraper.check_specified_files',
                 return_value=['job-output.txt'])
-    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
     @mock.patch('argparse.ArgumentParser.parse_args',
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
                     workers=1, download=True, directory="/tmp/testdir"))
-    def test_run_scraping_download(self, mock_args, mock_submit, mock_files,
+    def test_run_scraping_download(self, mock_args, mock_files,
                                    mock_isfile, mock_readfile,
                                    mock_specified_files, mock_save_buildinfo,
-                                   mock_config):
+                                   mock_config, mock_sqlite):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             with mock.patch(
@@ -385,12 +352,12 @@ class TestScraper(base.TestCase):
                 logscraper.run_scraping(
                     args, 'http://somehost.com/api/tenant/tenant1')
 
-            self.assertFalse(mock_submit.called)
             self.assertTrue(mock_specified_files.called)
             self.assertEqual(builds_result[0],
                              mock_specified_files.call_args.args[0])
             self.assertTrue(mock_save_buildinfo.called)
 
+    @mock.patch('sqlite3.connect', return_value=mock.MagicMock())
     @mock.patch('logscraper.logscraper.load_config')
     @mock.patch('logscraper.logscraper.save_build_info')
     @mock.patch('logscraper.logscraper.check_specified_files')
@@ -398,15 +365,14 @@ class TestScraper(base.TestCase):
     @mock.patch('os.path.isfile')
     @mock.patch('logscraper.logscraper.check_specified_files',
                 return_value=['job-output.txt'])
-    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
     @mock.patch('argparse.ArgumentParser.parse_args',
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
                     workers=1, download=True, directory="/tmp/testdir"))
-    def test_run_scraping_monitoring(self, mock_args, mock_submit, mock_files,
+    def test_run_scraping_monitoring(self, mock_args, mock_files,
                                      mock_isfile, mock_readfile,
                                      mock_specified_files, mock_save_buildinfo,
-                                     mock_config):
+                                     mock_config, mock_sqlite):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             with mock.patch(
@@ -424,7 +390,6 @@ class TestScraper(base.TestCase):
 
             self.assertEqual('job_name', monitoring.job_count._labelnames[0])
             self.assertEqual(2, len(monitoring.job_count._metrics))
-            self.assertFalse(mock_submit.called)
             self.assertTrue(mock_specified_files.called)
             self.assertEqual(builds_result[0],
                              mock_specified_files.call_args.args[0])
@@ -432,14 +397,12 @@ class TestScraper(base.TestCase):
 
     @mock.patch('logscraper.logscraper.create_custom_result')
     @mock.patch('logscraper.logscraper.check_specified_files')
-    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
-    @mock.patch('gear.BaseClient.waitForServer')
     @mock.patch('argparse.ArgumentParser.parse_args',
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
                     workers=1, download=True, directory="/tmp/testdir"))
-    def test_run_aborted_download(self, mock_args, mock_gear, mock_gear_client,
-                                  mock_check_files, mock_custom_result):
+    def test_run_aborted_download(self, mock_args, mock_check_files,
+                                  mock_custom_result):
         # Take job result that log_url is empty.
         result = builds_result[2]
         result['files'] = ['job-output.txt']
@@ -454,21 +417,17 @@ class TestScraper(base.TestCase):
 
         logscraper.run_build(result)
         logscraper.run_build(result_node_fail)
-        self.assertFalse(mock_gear_client.called)
         self.assertFalse(mock_check_files.called)
         self.assertTrue(mock_custom_result.called)
 
     @mock.patch('logscraper.logscraper.create_custom_result')
     @mock.patch('logscraper.logscraper.check_specified_files')
-    @mock.patch('logscraper.logscraper.LogMatcher.submitJobs')
-    @mock.patch('gear.BaseClient.waitForServer')
     @mock.patch('argparse.ArgumentParser.parse_args',
                 return_value=FakeArgs(
                     zuul_api_url=['http://somehost.com/api/tenant/tenant1'],
-                    workers=1, gearman_server='localhost',
-                    gearman_port='4731'))
-    def test_run_aborted(self, mock_args, mock_gear, mock_gear_client,
-                         mock_check_files, mock_custom_result):
+                    workers=1))
+    def test_run_aborted(self, mock_args, mock_check_files,
+                         mock_custom_result):
         # Take job result that build_status is "ABORTED" or "NODE_FAILURE"
         result = builds_result[2]
         result['files'] = ['job-output.txt']
@@ -483,9 +442,8 @@ class TestScraper(base.TestCase):
 
         logscraper.run_build(result)
         logscraper.run_build(result_node_fail)
-        self.assertTrue(mock_gear_client.called)
-        self.assertTrue(mock_check_files.called)
-        self.assertFalse(mock_custom_result.called)
+        self.assertFalse(mock_check_files.called)
+        self.assertTrue(mock_custom_result.called)
 
     @mock.patch('requests.get')
     @mock.patch('logscraper.logscraper.Monitoring')
@@ -499,7 +457,7 @@ class TestScraper(base.TestCase):
                 zuul_api_url=['http://somehost.com/api/tenant/tenant1',
                               'http://somehost.com/api/tenant/tenant2',
                               'http://somehost.com/api/tenant/tenant3'],
-                gearman_server='localhost')
+            )
             args = logscraper.get_arguments()
 
             logscraper.run(args, mock_monitoring)
@@ -609,14 +567,15 @@ class TestScraper(base.TestCase):
 
 
 class TestConfig(base.TestCase):
+    @mock.patch('sqlite3.connect', return_value=mock.MagicMock())
     @mock.patch('logscraper.logscraper.load_config')
     @mock.patch('sys.exit')
-    def test_config_object(self, mock_sys, mock_config):
+    def test_config_object(self, mock_sys, mock_config, mock_sqlite):
         # Assume that url is wrong so it raise IndexError
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
                 zuul_api_url='somehost.com',
-                gearman_server='localhost')
+            )
             args = logscraper.get_arguments()
             self.assertRaises(IndexError, logscraper.Config, args,
                               args.zuul_api_url)
@@ -624,7 +583,7 @@ class TestConfig(base.TestCase):
         with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
             mock_args.return_value = FakeArgs(
                 zuul_api_url='https://somehost.com',
-                gearman_server='localhost')
+            )
             args = logscraper.get_arguments()
             logscraper.Config(args, args.zuul_api_url)
             mock_sys.assert_called()
@@ -636,7 +595,6 @@ class TestConfig(base.TestCase):
         # correct url without job name
         mock_args.return_value = FakeArgs(
             zuul_api_url='http://somehost.com/api/tenant/sometenant',
-            gearman_server='localhost',
             checkpoint_file='/tmp/testfile')
         args = logscraper.get_arguments()
         some_config = logscraper.Config(args, args.zuul_api_url)
@@ -655,161 +613,6 @@ class TestLogMatcher(base.TestCase):
                 'tags': ['console', 'console.html']
             }]
         }
-
-    @mock.patch('logscraper.logscraper.load_config')
-    @mock.patch('gear.TextJob')
-    @mock.patch('gear.Client.submitJob')
-    @mock.patch('gear.BaseClient.waitForServer')
-    def test_submitJobs(self, mock_gear, mock_gear_client, mock_gear_job,
-                        mock_load_config):
-        result = builds_result[0]
-        result['files'] = ['job-output.txt']
-        result['tenant'] = 'sometenant'
-        parsed_job = {
-            "build_branch": "master",
-            "build_change": 806255,
-            "build_duration": 307.0,
-            "build_name": "openstack-tox-py38",
-            "build_node": "zuul-executor",
-            "build_patchset": "9",
-            "build_queue": "check",
-            "build_ref": "refs/changes/55/806255/9",
-            "build_set": {"uuid": "bf11828235c649ff859ad87d7c4aa525"},
-            "build_status": "SUCCESS",
-            "build_uuid": "bf11828235c649ff859ad87d7c4aa525",
-            "build_zuul_url": "N/A",
-            "filename": "job-output.txt",
-            "log_url": "https://t.com/openstack/a0f8968/job-output.txt",
-            "node_provider": "local",
-            "project": "openstack/tempest",
-            "tenant": "sometenant",
-            "voting": 1}
-
-        expected_gear_job = {"retry": False, "event": {
-            "fields": parsed_job,
-            "tags": ["job-output.txt", "console", "console.html"]},
-            "source_url": "https://t.com/openstack/a0f8968/job-output.txt"}
-        mock_load_config.return_value = self.config_file
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='http://somehost.com/api/tenant/sometenant',
-                gearman_server='localhost',
-                gearman_port='4731')
-            args = logscraper.get_arguments()
-            lmc = logscraper.LogMatcher(args.gearman_server, args.gearman_port,
-                                        result['result'], result['log_url'],
-                                        {}, self.config_file)
-            lmc.submitJobs('push-log', result['files'], result)
-            mock_gear_client.assert_called_once()
-            self.assertEqual(
-                expected_gear_job,
-                json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
-            )
-
-    @mock.patch('logscraper.logscraper.load_config')
-    @mock.patch('gear.TextJob')
-    @mock.patch('gear.Client.submitJob')
-    @mock.patch('gear.BaseClient.waitForServer')
-    def test_submitJobs_failure(self, mock_gear, mock_gear_client,
-                                mock_gear_job, mock_load_config):
-        # Take job result that build_status is "ABORTED"
-        result = builds_result[1]
-        result['files'] = ['job-output.txt']
-        result['tenant'] = 'sometenant'
-        parsed_job = {
-            'build_branch': 'master',
-            'build_change': 816445,
-            "build_duration": 603.0,
-            'build_name': 'tripleo-centos-8',
-            'build_node': 'zuul-executor',
-            'build_patchset': '1',
-            'build_queue': 'check',
-            'build_ref': 'refs/changes/45/816445/1',
-            'build_set': {'uuid': '4a0ffebe30a94efe819fffc03cf33ea4'},
-            'build_status': 'FAILURE',
-            'build_uuid': '4a0ffebe30a94efe819fffc03cf33ea4',
-            'build_zuul_url': 'N/A',
-            'filename': 'job-output.txt',
-            'log_url': 'https://t.com/tripleo-8/3982864/job-output.txt',
-            'node_provider': 'local',
-            'project': 'openstack/tripleo-ansible',
-            'tenant': 'sometenant',
-            'voting': 1}
-
-        expected_gear_job = {"retry": False, "event": {
-            "fields": parsed_job,
-            "tags": ["job-output.txt", "console", "console.html"]},
-            "source_url": "https://t.com/tripleo-8/3982864/job-output.txt"}
-        mock_load_config.return_value = self.config_file
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='http://somehost.com/api/tenant/sometenant',
-                gearman_server='localhost',
-                gearman_port='4731')
-            args = logscraper.get_arguments()
-            lmc = logscraper.LogMatcher(args.gearman_server, args.gearman_port,
-                                        result['result'], result['log_url'],
-                                        {}, self.config_file)
-            lmc.submitJobs('push-log', result['files'], result)
-            mock_gear_client.assert_called_once()
-            self.assertEqual(
-                expected_gear_job,
-                json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
-            )
-
-    @mock.patch('logscraper.logscraper.load_config')
-    @mock.patch('gear.TextJob')
-    @mock.patch('gear.Client.submitJob')
-    @mock.patch('gear.BaseClient.waitForServer')
-    def test_submitJobs_aborted(self, mock_gear, mock_gear_client,
-                                mock_gear_job, mock_load_config):
-        # Take job result that build_status is "ABORTED"
-        result = builds_result[2]
-        result['files'] = ['job-output.txt']
-        result['tenant'] = 'sometenant'
-        parsed_job = {
-            'build_branch': 'stable/victoria',
-            'build_change': 816486,
-            'build_duration': 18,
-            'build_name': 'openstack-tox-lower-constraints',
-            'build_node': 'zuul-executor',
-            'build_patchset': '1',
-            'build_queue': 'check',
-            'build_ref': 'refs/changes/86/816486/1',
-            'build_set': {'uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa'},
-            'build_status': 'FAILURE',
-            'build_uuid': 'bd044dfe3ecc484fbbf74fdeb7fb56aa',
-            'build_zuul_url': 'N/A',
-            'filename': 'job-output.txt',
-            'log_url': 'job-output.txt',
-            'node_provider': 'local',
-            'project': 'openstack/nova',
-            'tenant': 'sometenant',
-            'voting': 1}
-
-        # NOTE: normally ABORTED jobs does not provide log_url,
-        # so source_url will be just a file to iterate.
-        # In the logscraper, aborted jobs are just skipped.
-        expected_gear_job = {"retry": False, "event": {
-            "fields": parsed_job,
-            "tags": ["job-output.txt", "console", "console.html"]},
-            "source_url": "job-output.txt"}
-        mock_load_config.return_value = self.config_file
-        with mock.patch('argparse.ArgumentParser.parse_args') as mock_args:
-            mock_args.return_value = FakeArgs(
-                zuul_api_url='http://somehost.com/api/tenant/sometenant',
-                gearman_server='localhost',
-                gearman_port='4731')
-            args = logscraper.get_arguments()
-            lmc = logscraper.LogMatcher(args.gearman_server, args.gearman_port,
-                                        result['result'], result['log_url'],
-                                        {}, self.config_file)
-            lmc.submitJobs('push-log', result['files'], result)
-            mock_gear_client.assert_called_once()
-            self.assertEqual(
-                expected_gear_job,
-                json.loads(mock_gear_job.call_args.args[1].decode('utf-8'))
-            )
 
     @mock.patch('builtins.open', new_callable=mock.mock_open())
     @mock.patch('os.path.isfile')

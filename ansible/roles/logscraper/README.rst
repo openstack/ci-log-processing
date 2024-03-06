@@ -2,8 +2,8 @@ Logscraper ansible role
 =======================
 
 The goal of this role is to setup and configure service related
-to logscraper script which is responsible to to push recent
-zuul builds into log gearman processor.
+to logscraper script which is responsible to pull latest Zuul CI job
+logs to local storage.
 
 Requirements
 ------------
@@ -23,8 +23,6 @@ for example:
   vars:
     tenant_builds:
       - tenant: openstack
-        gearman_port: 4731
-        gearman_server: logstash.openstack.org
         zuul_api_url:
           - https://zuul.opendev.org/api/tenant/openstack
         insecure: false
@@ -57,8 +55,6 @@ and second one for getting logs from `sometenant` tenant.
     vars:
       tenant_builds:
         - tenant: openstack
-          gearman_port: 4731
-          gearman_server: logstash.openstack.org
           zuul_api_url:
             - https://zuul.opendev.org/api/tenant/openstack
           insecure: False
@@ -66,7 +62,6 @@ and second one for getting logs from `sometenant` tenant.
           zuul_api_url:
             - https://zuul.opendev.org/api/tenant/sometenant
           insecure: True
-          download: true
           download_dir: /mnt/logscraper
           file_list:
             - /etc/logscraper/my-downloadlist.yaml

@@ -1,14 +1,5 @@
 ---
 - job:
-    name: ci-log-processing-functional-test-centos-8-stream
-    description: Test is validating ci log processing services
-    run: ansible/playbooks/check-services.yml
-    voting: false
-    nodeset:
-      nodes:
-        - name: centos-8-stream
-          label: centos-8-stream
-- job:
     name: ci-log-processing-functional-test-centos-8-stream-sender
     description: Test is validating Logscraper and logsender services
     run: ansible/playbooks/check-services-sender.yml
@@ -38,7 +29,7 @@
 - job:
     name: ci-log-processing-build-image
     parent: opendev-build-docker-image
-    description: Build logscraper and loggearman images.
+    description: Build logscraper
     allowed-projects: openstack/ci-log-processing
     timeout: 2700
     vars: &cilogprocessing_image_vars
@@ -48,11 +39,6 @@
           target: logscraper
           tags:
             &imagetag "{{ zuul.tag is defined | ternary([zuul.get('tag', '').split('.')[0], '.'.join(zuul.get('tag', '').split('.')[:2]), zuul.get('tag', '')], ['latest']) }}"
-        - context: loggearman/
-          repository: cilogprocessing/loggearman
-          target: loggearman
-          tags:
-            *imagetag
 
 - job:
     name: ci-log-processing-upload-image
@@ -69,8 +55,6 @@
         soft: true
       - name: openstack-tox-py38
         soft: true
-      - name: ci-log-processing-functional-test-centos-8-stream
-        soft: true
       - name: ci-log-processing-functional-test-centos-8-stream-sender
         soft: true
       - name: ci-log-processing-build-image
@@ -86,14 +70,12 @@
         - openstack-tox-pep8
         - openstack-tox-py38
         - ci-log-processing-build-image
-        - ci-log-processing-functional-test-centos-8-stream
         - ci-log-processing-functional-test-centos-8-stream-sender
     gate:
       jobs:
         - openstack-tox-linters
         - openstack-tox-pep8
         - openstack-tox-py38
-        - ci-log-processing-functional-test-centos-8-stream
         - ci-log-processing-functional-test-centos-8-stream-sender
         - ci-log-processing-build-image
     post:
