@@ -470,6 +470,8 @@ def get_last_job_results(zuul_url, insecure, max_builds, build_cache,
 ###############################################################################
 def save_build_info(directory, build):
     logging.debug("Saving buildinfo in: %s" % directory)
+    build.pop("build_args")
+    build.pop("config_file")
     with open("%s/buildinfo" % directory, "w") as text_file:
         yaml.dump(build, text_file)
 
