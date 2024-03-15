@@ -265,7 +265,8 @@ def makeFields(build_inventory, buildinfo):
     fields["build_queue"] = build_details.get("pipeline", "NONE")
     fields["build_ref"] = buildinfo.get("ref")
     fields["build_branch"] = build_details.get("branch")
-    fields["build_change"] = int(build_details.get("change"))
+    fields["build_change"] = int(
+        build_details.get("change")) if build_details.get("change") else ''
     fields["build_patchset"] = build_details.get("patchset")
     fields["build_newrev"] = build_details.get("newrev", '')
     fields["build_uuid"] = str(buildinfo.get("uuid"))
