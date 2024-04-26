@@ -1,10 +1,10 @@
 ---
 - name: Install packages
+  become: true
   package:
     name: podman
     state: present
 
-### BUILD CONTAINER IMAGES ###
 - name: Build container images
   block:
     - name: Build logscraper container image - Zuul

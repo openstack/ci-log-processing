@@ -1,10 +1,15 @@
 ---
-- name: Ensure that all services are available and running
+- name: Ensure logscraper is available and running
   shell: |
-    systemctl is-active -q {{ item }}
-  loop:
-    - logscraper-openstack
-    - logsender-openstack
+    systemctl is-active -q logscraper-{{ item.tenant }}
+  loop: "{{ tenant_builds }}"
+  register: _service_status
+  failed_when: _service_status.rc != 0
+
+- name: Ensure logsender is available and running
+  shell: |
+    systemctl is-active -q logsender-{{ item.tenant }}
+  loop: "{{ tenant_builds }}"
   register: _service_status
   failed_when: _service_status.rc != 0
 
@@ -50,11 +55,13 @@
 
     - name: Get logscraper logs
       shell: |
-        podman logs logscraper-openstack
+        podman logs logscraper-{{ item.tenant }}
+      loop: "{{ tenant_builds }}"
 
     - name: Get logsender logs
       shell: |
-        podman logs logsender-openstack
+        podman logs logsender-{{ item.tenant }}
+      loop: "{{ tenant_builds }}"
 
     - name: Get indices to fail the test
       uri:
