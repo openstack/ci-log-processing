@@ -76,7 +76,7 @@ With this solution, log workflow looks like:
                   +-----------------+
 
 You can deploy your log workflow by using example Ansible playbook that
-you can find in `ansible/playbooks/check-services-sender.yml` in this project.
+you can find in `ansible/playbooks/check-services.yml` in this project.
 
 Testing
 -------

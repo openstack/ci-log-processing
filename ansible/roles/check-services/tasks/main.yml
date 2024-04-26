@@ -34,6 +34,7 @@
       set_fact:
         container_images:
           logscraper: "{{ _logscraper_image_id.stdout }}"
+          logsender: "{{ _logscraper_image_id.stdout }}"
 
 ### OPENSEARCH ####
 - name: Setup Opensearch
@@ -68,57 +69,27 @@
   shell: |
     podman exec -it opensearch bash -c "JAVA_HOME=/usr/share/opensearch/jdk /usr/share/opensearch/securityadmin_demo.sh"
 
-### LOGSTASH ###
-
-- name: Start Logstash service
-  shell: >
-    podman run -dit --name logstash --net host quay.io/software-factory/logstash-oss-with-opensearch-output-plugin:7.16.2 -e '
-      input {
-        tcp {
-          port => {{ output_port }}
-          codec => json_lines {}
-          type => "zuul"
-        }
-      } output {
-        opensearch {
-          hosts => ["https://localhost:9200"]
-          index => "logstash-logscraper-%{+YYYY.MM.dd}"
-          user => "admin"
-          password => "admin"
-          ssl => true
-          ssl_certificate_verification => false
-        }
-      } filter {
-          grok {
-            match => ["message", "(?<timestamp>[-0-9]{10}\s+[0-9.:]{12})(?<ms>[0-9]{3}) (?<sep>\|)%{GREEDYDATA:message}"]
-            overwrite => [ "message" ]
-          }
-          if [message] =~ /^\s*$/ {
-              drop { }
-          }
-          date {
-            match => ["timestamp", "yyyy-MM-dd HH:mm:ss.SSS"]
-            timezone => "UTC"
-          }
-       }'
-
-- name: Wait for Logstash to be up
-  wait_for:
-    host: 127.0.0.1
-    port: "{{ output_port }}"
-    delay: 10
-    timeout: 300
-
 ### Logscraper ###
 - name: Setup logscraper service
   include_role:
     name: logscraper
 
+### Logsender ###
+- name: Setup logsender service
+  include_role:
+    name: logsender
+
+# Flush handlers before running test
+- name: Force all notified handlers to run now
+  meta: flush_handlers
+
+### service validation ###
 - name: Ensure that all services are available and running
   shell: |
     systemctl is-active -q {{ item }}
   loop:
     - logscraper-openstack
+    - logsender-openstack
   register: _service_status
   failed_when: _service_status.rc != 0
 
@@ -139,18 +110,36 @@
       retries: 30
       delay: 10
 
+    - name: Check if build_branch exists in index content
+      uri:
+        url: "https://127.0.0.1:9200/logstash-logscraper"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_index_content
+      until: "'build_branch' in _opensearch_index_content.content"
+      retries: 30
+      delay: 10
   rescue:
     - name: List all podman containers
       shell: |
         podman ps -a
 
-    - name: Get logstash logs
-      shell: |
-        podman logs logstash
-
     - name: Get opensearch logs
       shell: |
         podman logs opensearch
+
+    - name: Get logscraper logs
+      shell: |
+        podman logs logscraper-openstack
+
+    - name: Get logsender logs
+      shell: |
+        podman logs logsender-openstack
 
     - name: Get indices to fail the test
       uri:

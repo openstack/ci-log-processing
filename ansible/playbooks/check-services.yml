@@ -23,7 +23,6 @@
     - name: Run check services
       include_role:
         name: check-services
-        tasks_from: download.yml
 
     - name: Run backup and restore test
       include_role:

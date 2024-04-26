@@ -2,7 +2,7 @@
 - job:
     name: ci-log-processing-functional-test-centos-9-stream-sender
     description: Test is validating Logscraper and logsender services
-    run: ansible/playbooks/check-services-sender.yml
+    run: ansible/playbooks/check-services.yml
     nodeset:
       nodes:
         - name: centos-9-stream
