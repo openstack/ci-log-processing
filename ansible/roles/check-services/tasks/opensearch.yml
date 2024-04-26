@@ -1,0 +1,32 @@
+---
+- name: Setup Opensearch
+  shell: >
+    podman run -d --name opensearch \
+      --network host \
+      -e "discovery.type=single-node" \
+      quay.io/software-factory/opensearch:2.11.1
+
+- name: Wait for Opensearch to be up
+  wait_for:
+    host: 127.0.0.1
+    port: 9200
+    delay: 10
+    timeout: 300
+
+- name: Wait for Opensearch to be up
+  uri:
+    url: "https://127.0.0.1:9200"
+    user: "admin"
+    password: "admin"
+    force_basic_auth: true
+    method: GET
+    validate_certs: false
+    status_code: "200"
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+
+- name: Reconfigure once again security plugin
+  shell: |
+    podman exec -it opensearch bash -c "JAVA_HOME=/usr/share/opensearch/jdk /usr/share/opensearch/securityadmin_demo.sh"

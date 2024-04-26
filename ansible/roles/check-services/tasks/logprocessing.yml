@@ -1,0 +1,12 @@
+---
+- name: Setup logscraper service
+  include_role:
+    name: logscraper
+
+- name: Setup logsender service
+  include_role:
+    name: logsender
+
+# Flush handlers before running test
+- name: Force all notified handlers to run now
+  meta: flush_handlers

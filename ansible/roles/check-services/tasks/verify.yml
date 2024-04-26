@@ -1,0 +1,72 @@
+---
+- name: Ensure that all services are available and running
+  shell: |
+    systemctl is-active -q {{ item }}
+  loop:
+    - logscraper-openstack
+    - logsender-openstack
+  register: _service_status
+  failed_when: _service_status.rc != 0
+
+- name: Get Opensearch indices
+  block:
+    - name: Get indices
+      uri:
+        url: "https://127.0.0.1:9200/_cat/indices"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_indices
+      until: "'logstash-logscraper' in _opensearch_indices.content"
+      retries: 30
+      delay: 10
+
+    - name: Check if build_branch exists in index content
+      uri:
+        url: "https://127.0.0.1:9200/logstash-logscraper"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_index_content
+      until: "'build_branch' in _opensearch_index_content.content"
+      retries: 30
+      delay: 10
+  rescue:
+    - name: List all podman containers
+      shell: |
+        podman ps -a
+
+    - name: Get opensearch logs
+      shell: |
+        podman logs opensearch
+
+    - name: Get logscraper logs
+      shell: |
+        podman logs logscraper-openstack
+
+    - name: Get logsender logs
+      shell: |
+        podman logs logsender-openstack
+
+    - name: Get indices to fail the test
+      uri:
+        url: "https://127.0.0.1:9200/_cat/indices"
+        user: "admin"
+        password: "admin"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_indices
+      until: "'logstash-logscraper' in _opensearch_indices.content"
+      retries: 3
+      delay: 10
