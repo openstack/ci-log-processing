@@ -4,6 +4,7 @@
 
 - name: Configure OpenSearch
   ansible.builtin.include_tasks: opensearch.yml
+  when: deploy_opensearch | default(true)
 
 - name: Configure log processing services
   ansible.builtin.include_tasks: logprocessing.yml
