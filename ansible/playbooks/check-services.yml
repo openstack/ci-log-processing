@@ -19,6 +19,8 @@
         es_index: logstash-logscraper
         logscraper_dir: /etc/logscraper
         subunit_index_prefix: "subunit-"
+        es_admin_username: admin
+        es_admin_password: admin
   tasks:
     - name: Run check services
       include_role:

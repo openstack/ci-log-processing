@@ -18,8 +18,8 @@
     - name: Get indices - es_index
       uri:
         url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
-        user: "{{ item.es_username }}"
-        password: "{{ item.es_password }}"
+        user: "{{ item.es_admin_username }}"
+        password: "{{ item.es_admin_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
@@ -35,8 +35,8 @@
     - name: Check if build_branch exists in index content - es_index
       uri:
         url: "https://{{ item.es_host }}:{{ item.es_port }}/{{ item.es_index }}"
-        user: "{{ item.es_username }}"
-        password: "{{ item.es_password }}"
+        user: "{{ item.es_admin_username }}"
+        password: "{{ item.es_admin_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
@@ -52,8 +52,8 @@
     - name: Get indices - es_index_prefix
       uri:
         url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
-        user: "{{ item.es_username }}"
-        password: "{{ item.es_password }}"
+        user: "{{ item.es_admin_username }}"
+        password: "{{ item.es_admin_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
@@ -67,12 +67,12 @@
       when: "'es_index_prefix' in item and item.es_index_prefix"
 
     # The es_index_prefix looks like: logstash-logscraper-
-    # Where the full indices in OpenSearch looks like: logstash-logscraper-2024-04-30
+    # Where the full indices in OpenSearch looks like: logstash-logscraper-2024.04.30
     - name: Check if build_branch exists in index content - es_index_prefix
       uri:
-        url: "https://{{ item.es_host }}:{{ item.es_port }}/{{ item.es_index_prefix }}{{ now(utc=true,fmt='%Y-%m-%d') }}"
-        user: "{{ item.es_username }}"
-        password: "{{ item.es_password }}"
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/{{ item.es_index_prefix }}{{ now(utc=true,fmt='%Y.%m.%d') }}"
+        user: "{{ item.es_admin_username }}"
+        password: "{{ item.es_admin_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
@@ -107,8 +107,8 @@
     - name: Get indices to fail the test
       uri:
         url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
-        user: "{{ item.es_username }}"
-        password: "{{ item.es_password }}"
+        user: "{{ item.es_admin_username }}"
+        password: "{{ item.es_admin_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
