@@ -15,26 +15,28 @@
 
 - name: Get Opensearch indices
   block:
-    - name: Get indices
+    - name: Get indices - es_index
       uri:
-        url: "https://127.0.0.1:9200/_cat/indices"
-        user: "admin"
-        password: "admin"
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
+        user: "{{ item.es_username }}"
+        password: "{{ item.es_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
         status_code: "200"
         return_content: true
       register: _opensearch_indices
-      until: "'logstash-logscraper' in _opensearch_indices.content"
+      until: item.es_index in _opensearch_indices.content
       retries: 30
       delay: 10
+      loop:  "{{ tenant_builds }}"
+      when: "'es_index' in item and item.es_index"
 
-    - name: Check if build_branch exists in index content
+    - name: Check if build_branch exists in index content - es_index
       uri:
-        url: "https://127.0.0.1:9200/logstash-logscraper"
-        user: "admin"
-        password: "admin"
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/{{ item.es_index }}"
+        user: "{{ item.es_username }}"
+        password: "{{ item.es_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
@@ -44,6 +46,45 @@
       until: "'build_branch' in _opensearch_index_content.content"
       retries: 30
       delay: 10
+      loop:  "{{ tenant_builds }}"
+      when: "'es_index' in item and item.es_index"
+
+    - name: Get indices - es_index_prefix
+      uri:
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
+        user: "{{ item.es_username }}"
+        password: "{{ item.es_password }}"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_indices
+      until: item.es_index_prefix in _opensearch_indices.content
+      retries: 30
+      delay: 10
+      loop:  "{{ tenant_builds }}"
+      when: "'es_index_prefix' in item and item.es_index_prefix"
+
+    # The es_index_prefix looks like: logstash-logscraper-
+    # Where the full indices in OpenSearch looks like: logstash-logscraper-2024-04-30
+    - name: Check if build_branch exists in index content - es_index_prefix
+      uri:
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/{{ item.es_index_prefix }}{{ now(utc=true,fmt='%Y-%m-%d') }}"
+        user: "{{ item.es_username }}"
+        password: "{{ item.es_password }}"
+        force_basic_auth: true
+        method: GET
+        validate_certs: false
+        status_code: "200"
+        return_content: true
+      register: _opensearch_index_content
+      until: "'build_branch' in _opensearch_index_content.content"
+      retries: 30
+      delay: 10
+      loop:  "{{ tenant_builds }}"
+      when: "'es_index_prefix' in item and item.es_index_prefix"
+
   rescue:
     - name: List all podman containers
       shell: |
@@ -65,15 +106,12 @@
 
     - name: Get indices to fail the test
       uri:
-        url: "https://127.0.0.1:9200/_cat/indices"
-        user: "admin"
-        password: "admin"
+        url: "https://{{ item.es_host }}:{{ item.es_port }}/_cat/indices"
+        user: "{{ item.es_username }}"
+        password: "{{ item.es_password }}"
         force_basic_auth: true
         method: GET
         validate_certs: false
         status_code: "200"
         return_content: true
-      register: _opensearch_indices
-      until: "'logstash-logscraper' in _opensearch_indices.content"
-      retries: 3
-      delay: 10
+      loop:  "{{ tenant_builds }}"
