@@ -8,8 +8,9 @@ StartLimitBurst=5
 Type=simple
 SyslogIdentifier=logsender-{{ item.tenant }}
 Restart=always
-RestartSec=3s
-ExecStop=-/usr/bin/podman stop -t 10 logsender-{{ item.tenant }}
+RestartSec=12s
+ExecStop=/usr/bin/podman stop -t 10 logsender-{{ item.tenant }}
+ExecStopPost=/usr/bin/podman rm -i logsender-{{ item.tenant }}
 ExecStart=/usr/local/bin/logsender-{{ item.tenant }}
 
 [Install]

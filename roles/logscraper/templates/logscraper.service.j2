@@ -8,8 +8,9 @@ StartLimitBurst=5
 Type=simple
 SyslogIdentifier=logscraper-{{ item.tenant }}
 Restart=always
-RestartSec=3s
-ExecStop=-/usr/bin/podman stop -t 10 logscraper-{{ item.tenant }}
+RestartSec=12s
+ExecStop=/usr/bin/podman stop -t 10 logscraper-{{ item.tenant }}
+ExecStopPost=/usr/bin/podman rm -i logscraper-{{ item.tenant }}
 ExecStart=/usr/local/bin/logscraper-{{ item.tenant }}
 
 [Install]
