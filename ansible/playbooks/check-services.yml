@@ -2,6 +2,8 @@
 - hosts: all
   become: true
   vars:
+    opensearch_user: admin
+    opensearch_pass: A!1dmiN*234#&
     # logscraper
     tenant_builds:
       - tenant: openstack
@@ -11,16 +13,16 @@
         job_names: []
         download: true
         download_dir: /mnt/logscraper/openstack
-        es_username: admin
-        es_password: admin
+        es_username: "{{ opensearch_user }}"
+        es_password: "{{ opensearch_pass }}"
         es_host: localhost
         es_port: 9200
         es_insecure: true
         es_index: logstash-logscraper
         logscraper_dir: /etc/logscraper
         subunit_index_prefix: "subunit-"
-        es_admin_username: admin
-        es_admin_password: admin
+        es_admin_username: "{{ opensearch_user }}"
+        es_admin_password: "{{ opensearch_pass }}"
   tasks:
     - name: Run check services
       include_role:

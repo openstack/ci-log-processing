@@ -4,7 +4,8 @@
     podman run -d --name opensearch \
       --network host \
       -e "discovery.type=single-node" \
-      quay.io/software-factory/opensearch:2.11.1
+      -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD={{ opensearch_pass }}" \
+      quay.io/software-factory/opensearch:2.13.0
 
 - name: Wait for Opensearch to be up
   wait_for:
@@ -16,8 +17,8 @@
 - name: Wait for Opensearch to be up
   uri:
     url: "https://127.0.0.1:9200"
-    user: "admin"
-    password: "admin"
+    user: "{{ opensearch_user }}"
+    password: "{{ opensearch_pass }}"
     force_basic_auth: true
     method: GET
     validate_certs: false
@@ -26,7 +27,3 @@
   until: result.status == 200
   retries: 30
   delay: 10
-
-- name: Reconfigure once again security plugin
-  shell: |
-    podman exec -it opensearch bash -c "JAVA_HOME=/usr/share/opensearch/jdk /usr/share/opensearch/securityadmin_demo.sh"

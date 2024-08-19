@@ -5,7 +5,7 @@
     podman run -d --name opensearch-dashboards
     --network host
     -e "OPENSEARCH_HOST=https://127.0.0.1:9200"
-    quay.io/software-factory/opensearch-dashboards:2.11.1
+    quay.io/software-factory/opensearch-dashboards:2.13.0
 
 - name: Wait for Opensearch Dashboards to be up
   wait_for:
@@ -17,8 +17,8 @@
 - name: Ensure Opensearch Dashboards to be up
   uri:
     url: "http://0.0.0.0:5601/app/login"
-    user: "admin"
-    password: "admin"
+    user: "{{ opensearch_user }}"
+    password: "{{ opensearch_pass }}"
     force_basic_auth: true
     method: GET
     status_code: "200"
@@ -46,7 +46,7 @@
     restore
     --dashboard-api-url http://127.0.0.1:5601
     --tenant global
-    --user 'admin' --password 'admin'
+    --user "{{ opensearch_user }}" --password "{{ opensearch_pass }}"
     --file {{ original_backup_dir }}/{{ item }}
     --host 127.0.0.1 --port 9200
     --insecure
@@ -136,7 +136,7 @@
     restore
     --dashboard-api-url http://127.0.0.1:5601
     --tenant global
-    --user 'admin' --password 'admin'
+    --user "{{ opensearch_user }}" --password "{{ opensearch_pass }}"
     --file {{ original_backup_dir }}/{{ item }}
     --host 127.0.0.1 --port 9200
     --insecure
