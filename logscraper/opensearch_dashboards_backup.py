@@ -87,6 +87,11 @@ def get_arguments():
     args_parser.add_argument('--port',
                              help='Opensearch port. Need to ensure that '
                              'index pattern exists before restore')
+    args_parser.add_argument("--subpath", help="Add the subpath to the host. "
+                             "That is useful, when the host url contains "
+                             "a slash(/). For example: "
+                             "'http://localhost/opensearch' then the subpath "
+                             "is 'opensearch'.")
     args_parser.add_argument('--ca-file',
                              help='Custom CA certificate file')
     args_parser.add_argument("--debug", help="Print more information",

@@ -63,6 +63,11 @@ def get_arguments():
                         "be stored.")
     parser.add_argument("--host", help="Opensearch host")
     parser.add_argument("--port", help="Opensearch port", type=int)
+    parser.add_argument("--subpath", help="Add the subpath to the host. "
+                        "That is useful, when the host url contains "
+                        "a slash(/). For example: "
+                        "'http://localhost/opensearch' then the subpath "
+                        "is 'opensearch'.")
     parser.add_argument("--username", help="Opensearch username")
     parser.add_argument("--password", help="Opensearch user password")
     parser.add_argument("--index-prefix", help="Prefix for the index.",
@@ -659,6 +664,9 @@ def get_es_client(args):
 
     if args.ca_file:
         es_creds['ca_certs'] = args.ca_file
+
+    if args.subpath:
+        es_creds['url_prefix'] = args.subpath
 
     es_client = OpenSearch([es_creds], timeout=60)
     logging.info("Connected to Opensearch: %s" % es_client.info())
