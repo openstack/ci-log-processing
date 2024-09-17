@@ -5,7 +5,7 @@
       --network host \
       -e "discovery.type=single-node" \
       -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD={{ opensearch_pass }}" \
-      quay.io/software-factory/opensearch:2.13.0
+      quay.io/software-factory/opensearch:2.15.0
 
 - name: Wait for Opensearch to be up
   wait_for:
