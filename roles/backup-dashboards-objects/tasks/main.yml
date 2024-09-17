@@ -5,7 +5,7 @@
     podman run -d --name opensearch-dashboards
     --network host
     -e "OPENSEARCH_HOST=https://127.0.0.1:9200"
-    quay.io/software-factory/opensearch-dashboards:2.13.0
+    quay.io/software-factory/opensearch-dashboards:2.15.0
 
 - name: Wait for Opensearch Dashboards to be up
   wait_for:
