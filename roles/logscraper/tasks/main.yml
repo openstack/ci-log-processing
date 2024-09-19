@@ -31,3 +31,4 @@
 - name: Configure logscraper service
   include_tasks: service.yml
   loop: "{{ tenant_builds }}"
+  no_log: true
