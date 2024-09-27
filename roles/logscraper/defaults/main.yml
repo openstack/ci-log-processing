@@ -31,4 +31,5 @@ container_images:
 #     logscraper_custom_ca_crt: ""
 #     monitoring_port: ""
 #     timeout: 300
+#     selinux_context: "z"
 tenant_builds: []

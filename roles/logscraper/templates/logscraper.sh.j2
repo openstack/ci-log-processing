@@ -7,15 +7,15 @@
     --uidmap 0:{{ logscraper_uid + 1 }}:999 \
     --uidmap 1000:{{ logscraper_uid }}:1 \
     --name logscraper-{{ item.tenant }} \
-    --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}:z \
+    --volume {{ item.logscraper_dir | default(logscraper_dir) }}:{{ logscraper_dir }}{% if 'selinux_context' in item %}:{{ item['selinux_context'] }}{% endif %} \
     {% for file_list in item['file_list'] | default([logscraper_dir + '/download-list-' + item['tenant'] + '.yaml']) -%}
-    --volume {{ file_list }}:{{ file_list }}:z \
+    --volume {{ file_list }}:{{ file_list }}{% if 'selinux_context' in item %}:{{ item['selinux_context'] }}{% endif %} \
     {% endfor -%}
     {% if 'logscraper_custom_ca_crt' in item %}
-    --volume {{ item['logscraper_custom_ca_crt'] }}:{{ item['logscraper_custom_ca_crt'] }}:z \
+    --volume {{ item['logscraper_custom_ca_crt'] }}:{{ item['logscraper_custom_ca_crt'] }}{% if 'selinux_context' in item %}:{{ item['selinux_context'] }}{% endif %} \
     {% endif %}
     {% if 'download_dir' in item %}
-    --volume {{ item.download_dir }}:{{ item.download_dir }}:z \
+    --volume {{ item.download_dir }}:{{ item.download_dir }}{% if 'selinux_context' in item %}:{{ item['selinux_context'] }}{% endif %} \
     {% endif %}
     {{ container_images['logscraper'] }} \
     /usr/local/bin/logscraper --config {{ logscraper_dir }}/logscraper-{{ item['tenant'] }}.config

@@ -23,6 +23,7 @@
         subunit_index_prefix: "subunit-"
         es_admin_username: "{{ opensearch_user }}"
         es_admin_password: "{{ opensearch_pass }}"
+        selinux_context: "z"
   tasks:
     - name: Run check services
       include_role:

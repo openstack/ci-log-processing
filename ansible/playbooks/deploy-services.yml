@@ -26,6 +26,7 @@
         performance_index_prefix: "performance-"
         subunit_index_prefix: "subunit-"
         monitoring_port: 9128
+        selinux_context: "z"
   roles:
     - logscraper
     - logsender

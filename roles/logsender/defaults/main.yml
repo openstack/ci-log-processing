@@ -31,4 +31,5 @@ container_images:
 #     skip_debug: false
 #     performance_index_prefix: ""
 #     subunit_index_prefix: ""
+#     selinux_context: "z"
 tenant_builds: []
