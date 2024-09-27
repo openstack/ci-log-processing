@@ -1,12 +1,19 @@
 ---
 - name: Create logscraper download directory
-  file:
-    path: "{{ item.download_dir }}"
-    state: directory
-    recurse: true
-    owner: "{{ logscraper_user }}"
-    group: "{{ logscraper_group }}"
   when: "'download_dir' in item"
+  block:
+    - name: Check if download directory already exists
+      ansible.builtin.stat:
+        path: "{{ item.download_dir }}"
+      register: _download_dir
+
+    - name: Create download directory
+      when: not _download_dir.stat.exists
+      ansible.builtin.file:
+        path: "{{ item.download_dir }}"
+        state: directory
+        owner: "{{ logscraper_user }}"
+        group: "{{ logscraper_group }}"
 
 - name: Generate logscraper script
   template:
