@@ -597,7 +597,7 @@ def create_indices(index, args):
     es_client = get_es_client(args)
     try:
         logging.info("Creating index %s" % index)
-        return es_client.indices.create(index)
+        return es_client.indices.create(index=index)
     except opensearch_exceptions.AuthorizationException:
         logging.critical("You need to have permissions to create an index. "
                          "Probably you need to add [indices:admin/create] or "
