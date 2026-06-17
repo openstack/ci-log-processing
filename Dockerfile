@@ -22,16 +22,16 @@ RUN groupadd logscraper --gid 1000 && \
     useradd --home-dir /home/logscraper --gid 1000 --uid 1000 logscraper
 
 RUN dnf update -y && \
-    dnf install -y python3.11 python3.11-setuptools \
-                   python3.11-devel python3.11-pip git gcc
+    dnf install -y python3.12 python3.12-setuptools \
+    python3.12-devel python3.12-pip git gcc
 
 COPY . /tmp/src
 RUN cd /tmp/src && \
-    pip3.11 install -r requirements.txt && \
-    python3.11 setup.py install && \
+    pip3.12 install -r requirements.txt && \
+    python3.12 setup.py install && \
     rm -rf /tmp/src
 
-RUN dnf remove -y python3.11-devel git gcc && \
+RUN dnf remove -y python3.12-devel git gcc && \
     dnf autoremove -y && \
     dnf clean all && \
     rm -rf ~/.cache/pip
