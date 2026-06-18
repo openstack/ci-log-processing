@@ -15,16 +15,16 @@
     data:
       username: cilogprocessing
       password: !encrypted/pkcs1-oaep
-        - HYNNwWxpT2hWhKOb2Mc1jziFEhHl7X7CKq1BR+ep8U81n80VLYfhhsGQNIVRUUOSWwLSy
-          zTOyInPdYRYy0sAW1wRllFttdQGulzmgb26R01sjz34/OSttbd2BHKRGCZM8bY7zkWVLN
-          ACPOcm12eTceBgGNKYJ/TT17Jub5iwp6lPgtLWbT92QbLBVWbxexZEfT0X95GsRz8S5uo
-          jXCpKbzNlDnyOCGkMDWpSKPa3K+r+stkmO7+cMPKIf9nhEB+gblTCfXJysa6hfqx/sEaj
-          ovQR6btu1VljorG5VQG47jL2d/AJGQj6B0ibd053+mdjljg5DWoUYOpxdhzvxAZJsvozA
-          NYCD0jKsPjEBZf/Lx3QPizLhl/iZUPGQUQgw2Y94ck7R2trcj7y8J4qHiXD2bOrUUmeZv
-          31A56Rhx/nWIcP8BD0km9KUBVk/TleG32Bsbz74gvf4yIJ4vpJS/wqyK3v5kuoguym0Nx
-          aQRH0L1NZfN4uOQQPuh1tytsnoipl4a5sRgE7X3rZwAI+cX+WaEc613/CvA48lDgSH5SO
-          UzGbtzHV3q4RuIiHkdxpwFYzF6vrPBx04UVBnG4uR8nqyK6dP+g5SYIYXNrUHwmkYwM6X
-          csDScfIz7yBkms1OOomcb7tqm87R9NHqf8M13SsA3xqTDk+j2yvY634UmSTbuM=
+        - s8H0t10lkvwZchmd4D0dh1T/OpB6zUIixqL/7S60BARw8DqAH26KhCHpLhAMEfaFUOa85
+          Q2Q6HRCt+K4u97oDQ2BihmKHRqosVFUFcx7uVw2LQyLX474r74AOgBZ/VYdqjE+P8G9sT
+          w0AUL7RWE8FEg7K8Fj/PQLM9QYTlX2HJdTMCOQUXhOCzduCxWU9zUMbjff9F9YsrZIXsz
+          4faTaAOgxG7f/4MvVKsztSjXivE56t9zXz/5kfJMIf2wXrSwjWxdjriOcmbjkxQbzDfz5
+          4TGs/1Pg+yZJBmJg0M5FhW+QnYEGzE5nxRW2a+5H8o10qSTMGKDuB+yJmPSDdVrb+G1xQ
+          qUMe2YDKZu9ZCxtXp0KUakMAqXGa4tiGFdU3eGHiRZVc1cqDtQn0pAUNZQUky+LtbMea/
+          MkVFPyBu3qeQi9MOm1W9YqB7ISf8D0GPiyuqUHzq+AOhScor+DcJqbgRKBkVYdqKVj2U4
+          FBgIwU2WdydnNZ/HvK0sZb4MNAWrSuK+T3I5b00OXeA4BfvxLU0BIKOjAwvcYLsVg9fXd
+          j76rPq0KZvsD2P7Aih8bDxWc03YdXXefl0LhMXNaUZHamrUEYyQsf5jADo2MUeLA+Iidk
+          CnLYa/cR4qcGbhK0XtKjCBvx/Zk6phPF2vvY3tTN7Caknlz4NYq/ggASrxekeg=
 
 - job:
     name: ci-log-processing-build-image
