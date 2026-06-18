@@ -9,22 +9,22 @@
           label: centos-9-stream
 
 # Image building jobs
-# NOTE: secret encrypted with opendev/system-config repo
+# NOTE: secret encrypted with openstack/ci-log-processing repo
 - secret:
     name: cilogprocessing-docker
     data:
       username: cilogprocessing
       password: !encrypted/pkcs1-oaep
-        - s8H0t10lkvwZchmd4D0dh1T/OpB6zUIixqL/7S60BARw8DqAH26KhCHpLhAMEfaFUOa85
-          Q2Q6HRCt+K4u97oDQ2BihmKHRqosVFUFcx7uVw2LQyLX474r74AOgBZ/VYdqjE+P8G9sT
-          w0AUL7RWE8FEg7K8Fj/PQLM9QYTlX2HJdTMCOQUXhOCzduCxWU9zUMbjff9F9YsrZIXsz
-          4faTaAOgxG7f/4MvVKsztSjXivE56t9zXz/5kfJMIf2wXrSwjWxdjriOcmbjkxQbzDfz5
-          4TGs/1Pg+yZJBmJg0M5FhW+QnYEGzE5nxRW2a+5H8o10qSTMGKDuB+yJmPSDdVrb+G1xQ
-          qUMe2YDKZu9ZCxtXp0KUakMAqXGa4tiGFdU3eGHiRZVc1cqDtQn0pAUNZQUky+LtbMea/
-          MkVFPyBu3qeQi9MOm1W9YqB7ISf8D0GPiyuqUHzq+AOhScor+DcJqbgRKBkVYdqKVj2U4
-          FBgIwU2WdydnNZ/HvK0sZb4MNAWrSuK+T3I5b00OXeA4BfvxLU0BIKOjAwvcYLsVg9fXd
-          j76rPq0KZvsD2P7Aih8bDxWc03YdXXefl0LhMXNaUZHamrUEYyQsf5jADo2MUeLA+Iidk
-          CnLYa/cR4qcGbhK0XtKjCBvx/Zk6phPF2vvY3tTN7Caknlz4NYq/ggASrxekeg=
+        - uOZ97UlkimpLofOZD3DK6/mbyjz74khbRFN28p/MQSULiAl8DPGBHGIUwVhdI6U80N4yF
+          aCueW74rbAgsKX9po9ze1m7EQ1shmyplhGPLL8mY2WsEmuTEMGLnDdE/XN3jT8oy8NwYj
+          9y6FIwKnqtmvOHxkyrnN88nYvY4rYmQ9ycYcXT03i4/eiSpL11EVVE1wmgygqR9y4s5OC
+          avpv/ka5gyweRiba51hJnot+x+4x2fbeIuAXUikZmuJXLVIGbPQCweb9OX5zS+b/piVMj
+          N11ZiLmJr0i2cy/qMINNVI+D0GBdn3v//4M2MpzI+a5bmK2ETMazTu1mH82Dd4d5Vtu17
+          Ai6NoJjqgiJhUiCxq6Kupwu5fDRKShvyH+uPHOkSPEdBBq5Ojt+fRT8ZtVxWwHkZ1UPqA
+          fsmIw1eQvyyDK7qshpoOCjerkDtj7DAcxh5zRDWnsY+qPAzvqSEODwh8qr494n1ATsaI8
+          40q3Tk+CAdN0zn93lZr21c8MsyNohOnrs1diU2VECL/6zrfTZEUc0C6u8H125qltNsIQ4
+          spJnvpvfZcPzYdK8bQ7ntPnpN6hxLMuW9Kwq0FUK4KGs5wiD4Kc4JSQ+LT3XQXFVAD35C
+          CMyf7MJOADn1cWw0G+iG40Xn1ODBl7KyWtHaiOA4pbA494ctJ8GP/72X8xXO6Q=
 
 - job:
     name: ci-log-processing-build-image
