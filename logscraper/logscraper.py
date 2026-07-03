@@ -624,17 +624,17 @@ def check_specified_files(job_result, insecure, timeout, directory=None):
     ]
 
     results = []
-    pool = ThreadPoolExecutor(max_workers=args.workers)
-    for page in pool.map(download_file, build_log_urls,
-                         itertools.repeat(directory),
-                         itertools.repeat(insecure),
-                         itertools.repeat(timeout)):
-        if page:
-            results.append(page)
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        for page in pool.map(download_file, build_log_urls,
+                             itertools.repeat(directory),
+                             itertools.repeat(insecure),
+                             itertools.repeat(timeout)):
+            if page:
+                results.append(page)
 
-    pool.map(ensure_file_downloaded, inventory_urls,
-             itertools.repeat(directory), itertools.repeat(insecure),
-             itertools.repeat(timeout))
+        pool.map(ensure_file_downloaded, inventory_urls,
+                 itertools.repeat(directory), itertools.repeat(insecure),
+                 itertools.repeat(timeout))
 
     return results
 
