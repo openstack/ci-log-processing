@@ -295,10 +295,9 @@ class TestScraper(base.TestCase):
                           mock_save_buildinfo, mock_config, mock_sqlite):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
-            with mock.patch('multiprocessing.pool.Pool.map_async',
-                            lambda self, func, iterable, chunksize=None,
-                            callback=None, error_callback=None:
-                            _MockedPoolMapAsyncResult(func, iterable)):
+            with mock.patch('multiprocessing.pool.Pool.map',
+                            lambda self, func, iterable, chunksize=None:
+                            [func(i) for i in iterable]):
                 args = logscraper.get_arguments()
                 mock_job_results.return_value = [builds_result[0]]
                 logscraper.run_scraping(
@@ -342,10 +341,9 @@ class TestScraper(base.TestCase):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             with mock.patch(
-                    'multiprocessing.pool.Pool.map_async',
-                    lambda self, func, iterable, chunksize=None, callback=None,
-                    error_callback=None: _MockedPoolMapAsyncResult(
-                        func, iterable),
+                    'multiprocessing.pool.Pool.map',
+                    lambda self, func, iterable, chunksize=None:
+                    [func(i) for i in iterable],
             ):
                 args = logscraper.get_arguments()
                 mock_job_results.return_value = [builds_result[0]]
@@ -376,10 +374,9 @@ class TestScraper(base.TestCase):
         with mock.patch('logscraper.logscraper.get_last_job_results'
                         ) as mock_job_results:
             with mock.patch(
-                    'multiprocessing.pool.Pool.map_async',
-                    lambda self, func, iterable, chunksize=None, callback=None,
-                    error_callback=None: _MockedPoolMapAsyncResult(
-                        func, iterable),
+                    'multiprocessing.pool.Pool.map',
+                    lambda self, func, iterable, chunksize=None:
+                    [func(i) for i in iterable],
             ):
                 args = logscraper.get_arguments()
                 mock_job_results.return_value = [builds_result[0]]
