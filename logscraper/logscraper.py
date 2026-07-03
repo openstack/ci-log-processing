@@ -227,6 +227,7 @@ class Config:
 class BuildCache:
     def __init__(self, filepath=None):
         self.builds = dict()
+        self._new = dict()
 
         if not filepath:
             logging.critical("No cache file provided. Can not continue")
@@ -267,7 +268,9 @@ class BuildCache:
             logging.exception("Can't get data from cache file! Error %s" % e)
 
     def add(self, uid):
-        self.builds[uid] = int(datetime.datetime.now().timestamp())
+        ts = int(datetime.datetime.now().timestamp())
+        self.builds[uid] = ts
+        self._new[uid] = ts
 
     def vacuum(self):
         self.cursor.execute("vacuum")
@@ -282,7 +285,7 @@ class BuildCache:
 
     def save(self):
         self.cursor.executemany('INSERT INTO logscraper VALUES (?,?)',
-                                list(self.builds.items()))
+                                list(self._new.items()))
         self.connection.commit()
 
     def contains(self, uid):
