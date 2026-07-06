@@ -14,7 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import datetime
 import tempfile
 
 from logscraper import logscraper
@@ -667,28 +666,51 @@ class TestBuildCache(base.TestCase):
                          mock_execute.call_args_list[3].args[0])
 
     def test_clean(self):
-        # add old data
         tmp_dir = tempfile.mkdtemp()
         filename = '%s/testfile' % tmp_dir
         cache = logscraper.BuildCache(filename)
-        current_build = {'ffeeddccbbaa': datetime.datetime.now().timestamp()}
+        cache.add('ffeeddccbbaa')
+        # inject an old entry directly into _new so it gets persisted
+        cache._new['aabbccddeeff'] = 1647131633
         cache.builds['aabbccddeeff'] = 1647131633
-        cache.builds.update(current_build)
         cache.save()
         # check cleanup
         cache = logscraper.BuildCache(filename)
         cache.clean()
-        self.assertEqual(current_build, cache.builds)
+        self.assertIn('ffeeddccbbaa', cache.builds)
+        self.assertNotIn('aabbccddeeff', cache.builds)
 
     @mock.patch('sqlite3.connect')
     def test_save(self, mock_connect):
         tmp_dir = tempfile.mkdtemp()
         filename = '%s/testfile' % tmp_dir
         cache = logscraper.BuildCache(filename)
-        cache.builds = {'ffeeddccbbaa': datetime.datetime.now().timestamp()}
+        cache.add('ffeeddccbbaa')
         cache.save()
         mock_many = mock_connect.return_value.cursor.return_value.executemany
         mock_many.assert_called()
         expected_call = ('INSERT INTO logscraper VALUES (?,?)',
-                         list(cache.builds.items()))
+                         list(cache._new.items()))
         self.assertEqual(expected_call, mock_many.call_args_list[0].args)
+
+    def test_save_no_duplicates(self):
+        """Builds already in DB must not be reinserted on subsequent runs."""
+        tmp_dir = tempfile.mkdtemp()
+        filename = '%s/testfile' % tmp_dir
+
+        cache = logscraper.BuildCache(filename)
+        cache.add('aaa')
+        cache.add('bbb')
+        cache.save()
+
+        # Simulate a second run: same builds are loaded from DB, one new added
+        cache = logscraper.BuildCache(filename)
+        cache.add('ccc')
+        cache.save()
+
+        # All three uids present exactly once
+        cache = logscraper.BuildCache(filename)
+        rows = cache.fetch_data()
+        uids = [r[0] for r in rows]
+        self.assertEqual(len(uids), len(set(uids)))
+        self.assertCountEqual(['aaa', 'bbb', 'ccc'], uids)
