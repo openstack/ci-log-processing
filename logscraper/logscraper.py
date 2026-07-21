@@ -721,13 +721,12 @@ def run_scraping(args, zuul_api_url, job_name=None, monitoring=None):
 
     logging.info("Processing %d builds", len(builds))
 
-    if builds:
-        pool = multiprocessing.Pool(int(args.workers))
-        try:
-            r = pool.map_async(run_build, builds)
-            r.wait()
-        finally:
-            config.save()
+    try:
+        if builds:
+            with multiprocessing.Pool(args.workers) as pool:
+                pool.map(run_build, builds)
+    finally:
+        config.save()
 
     if monitoring:
         monitoring.parse_metrics(builds)
