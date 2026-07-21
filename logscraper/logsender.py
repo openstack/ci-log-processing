@@ -372,10 +372,6 @@ def get_message(line):
         return line.replace('\n', '')
 
 
-def open_file(path):
-    return open(path, 'r')
-
-
 def get_file_info(config, build_file):
     config_files = l_config(config)
     for f in config_files["files"]:
@@ -386,7 +382,7 @@ def get_file_info(config, build_file):
 
 
 def json_iter(build_file):
-    with open_file(build_file) as f:
+    with open(build_file) as f:
         parse_file = json.load(f)
         if 'report' in parse_file and 'timestamp' in parse_file['report']:
             ts = get_timestamp(parse_file['report']['timestamp'])
@@ -397,7 +393,7 @@ def json_iter(build_file):
 
 def logline_iter(build_file, skip_debug):
     last_known_timestamp = None
-    with open_file(build_file) as f:
+    with open(build_file) as f:
         while True:
             line = f.readline()
             if (last_known_timestamp is None and line.startswith(

@@ -15,7 +15,6 @@
 # under the License.
 import copy
 import datetime
-import io
 import json
 import os
 
@@ -540,23 +539,18 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.doc_iter')
     @mock.patch('logscraper.logsender.logline_iter')
     @mock.patch('opensearchpy.helpers.bulk')
-    @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000,
                 config='config.yaml', skip_debug=False,
                 performance_index_prefix="perf",
                 subunit_index_prefix="subunit"))
-    def test_send_to_es(self, mock_args, mock_text, mock_bulk, mock_doc_iter,
+    def test_send_to_es(self, mock_args, mock_bulk, mock_doc_iter,
                         mock_logline_chunk, mock_file_info):
         build_file = 'job-result.txt'
         es_fields = parsed_fields
         es_client = mock.Mock()
         args = logsender.get_arguments()
-        text = ["2022-02-28 09:39:09.596010 | Job console starting...",
-                "2022-02-28 09:39:09.610160 | Updating repositories",
-                "2022-02-28 09:39:09.996235 | Preparing job workspace"]
-        mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
             '_source': {
@@ -647,22 +641,17 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.doc_iter')
     @mock.patch('logscraper.logsender.logline_iter')
     @mock.patch('opensearchpy.helpers.bulk')
-    @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=False,
                 performance_index_prefix="perf",
                 subunit_index_prefix="subunit"))
-    def test_send_to_es_error(self, mock_args, mock_text, mock_bulk,
+    def test_send_to_es_error(self, mock_args, mock_bulk,
                               mock_logline, mock_doc_iter, mock_file_info):
         build_file = 'job-result.txt'
         es_fields = parsed_fields
         es_client = mock.Mock()
         args = logsender.get_arguments()
-        text = ["2022-02-28 09:39:09.596010 | Job console starting...",
-                "2022-02-28 09:39:09.610160 | Updating repositories",
-                "2022-02-28 09:39:09.996235 | Preparing job workspace"]
-        mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
             '_source': {
@@ -707,7 +696,7 @@ class TestSender(base.TestCase):
     @mock.patch('json.load')
     @mock.patch('logscraper.logsender.get_file_info')
     @mock.patch('opensearchpy.helpers.bulk')
-    @mock.patch('logscraper.logsender.open_file')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=False,
@@ -720,8 +709,6 @@ class TestSender(base.TestCase):
         es_client = mock.Mock()
         args = logsender.get_arguments()
         mock_json_load.return_value = json.loads(performance_json)
-        mock_text.new_callable = mock.mock_open(
-            read_data=str(performance_json))
 
         es_doc = {
             '_index': 'perf',
@@ -918,23 +905,18 @@ class TestSender(base.TestCase):
     @mock.patch('logscraper.logsender.doc_iter')
     @mock.patch('logscraper.logsender.logline_iter')
     @mock.patch('opensearchpy.helpers.bulk')
-    @mock.patch('logscraper.logsender.open_file')
     @mock.patch('argparse.ArgumentParser.parse_args', return_value=FakeArgs(
                 directory="/tmp/testdir", index="myindex", workers=1,
                 chunk_size=1000, config='test.yaml', skip_debug=True,
                 performance_index_prefix="perf",
                 subunit_index_prefix="subunit"))
-    def test_send_to_es_skip_debug(self, mock_args, mock_text, mock_bulk,
+    def test_send_to_es_skip_debug(self, mock_args, mock_bulk,
                                    mock_logline, mock_doc_iter,
                                    mock_file_info):
         build_file = 'job-result.txt'
         es_fields = parsed_fields
         es_client = mock.Mock()
         args = logsender.get_arguments()
-        text = ["2022-02-28 09:39:09.596010 | Job console starting...",
-                "2022-02-28 09:39:09.610160 | DEBUG Updating repositories",
-                "2022-02-28 09:39:09.996235 | DEBUG Preparing job workspace"]
-        mock_text.return_value = io.StringIO("\n".join(text))
         es_doc = [{
             '_index': 'myindex',
             '_source': {
@@ -1028,7 +1010,7 @@ class TestSender(base.TestCase):
             self.assertTrue(mocked_open_file.called)
 
     @mock.patch('json.load')
-    @mock.patch('logscraper.logsender.open_file')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     def test_json_iter(self, mock_open_file, mock_json_load):
         text = {
             "transient": {
@@ -1214,8 +1196,7 @@ class TestSender(base.TestCase):
     @mock.patch('yaml.safe_load')
     @mock.patch('builtins.open', new_callable=mock.mock_open())
     @mock.patch('logscraper.logscraper.load_config')
-    @mock.patch('logscraper.logsender.open_file')
-    def test_get_file_info(self, mock_open_file, mock_load_config, mock_open,
+    def test_get_file_info(self, mock_load_config, mock_open,
                            mock_yaml):
         config = {'files': [{
             'name': 'job-output.txt',
